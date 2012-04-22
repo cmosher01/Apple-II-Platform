@@ -1,0 +1,2242 @@
+               ORG  $0AD0      ;Aftr txt strg
+GRPHL          EQU  $6
+GRPHH          EQU  $7
+CHRL           EQU  $8
+CHRH           EQU  $9
+RMS            EQU  $19
+RMD            EQU  $1A
+LMS            EQU  $1B
+LMD            EQU  $1C
+XBASL          EQU  $1D        ;Txtbas
+XBASH          EQU  $1E
+WORK           EQU  RMS
+BASL           EQU  $28
+BASH           EQU  $29
+ZPG1           EQU  $2A
+ZPG2           EQU  $2B
+INVFLG         EQU  $32
+VMODE          EQU  $4FB
+VFACTV         EQU  $67B
+EORNYB         EQU  $1FAC
+EORNYB1        EQU  $1FAD
+MARWID         EQU  $1FAE
+INDEX          EQU  $1FAF
+FONTADDR       EQU  $1FB0
+WHEREMEM       EQU  $1FC4
+CHARARG        EQU  $1FC6
+ESCCURSR       EQU  $1FCA
+ORBIT          EQU  $1FCE
+ANDNYB         EQU  $1FCF
+ANDNYB1        EQU  $1FD0
+TXTNDX         EQU  $1FD1
+ESCCURV        EQU  $1FD2
+INVERTO        EQU  $1FD7
+UNDRSCR        EQU  $1FD8
+PAGE           EQU  $1FD9
+GTLNCHK        EQU  $1FDA
+BELVEC         EQU  $1FDE
+KEYPRVEC       EQU  $1FE0
+TBLIOVEC       EQU  $1FE2
+DLYVAL         EQU  $1FE6
+DLYLPCNT       EQU  $1FE7
+STROF80        EQU  $C000
+RAMRDOFF       EQU  $C002
+RAMRDON        EQU  $C003
+RAMWRTOF       EQU  $C004
+RAMWRTON       EQU  $C005
+ALTZPOFF       EQU  $C008
+ALTZPON        EQU  $C009
+COL80ON        EQU  $C00D
+RDBANK2        EQU  $C011
+RDLCRAM        EQU  $C012
+RAMRD          EQU  $C013
+RAMWRT         EQU  $C014
+ALTZP          EQU  $C016
+TEXTOFF        EQU  $C050
+MIXEDOFF       EQU  $C052
+PAGE2OFF       EQU  $C054
+HIRESON        EQU  $C057
+DHIRESON       EQU  $C05E
+IOUOFF         EQU  $C07E
+READBSR2       EQU  $C080
+WRITBSR2       EQU  $C081
+WRITBSR1       EQU  $C089
+RDWRBSR2       EQU  $C083
+RDWRBSR1       EQU  $C08B
+SETID          EQU  $D000
+SETREAD        EQU  $D00F
+LOAD           EQU  $D05D
+BLAST          EQU  $D07A
+TXBLST         EQU  $D0F6
+D0SCRL         EQU  SETID
+LINSTRS        EQU  $D004
+HINSTRS        EQU  $D005
+LINSTRS1       EQU  $D007
+HINSTRS1       EQU  $D008
+HINSTRS2       EQU  $D02F
+BCTERM         EQU  $D04A
+D0TXT          EQU  $D04F
+SLTXT          EQU  $D059
+SHTXT          EQU  $D05A
+SLTXT1         EQU  $D05C
+SHTXT1         EQU  $D05D
+BCSTX          EQU  $D05F
+D0TXTA         EQU  $D07A
+ALTXT          EQU  $D082
+AHTXT          EQU  $D083
+ALTXT1         EQU  $D085
+AHTXT1         EQU  $D086
+BCATX          EQU  $D088
+D0MCOP         EQU  $D0A3
+D0MCLR         EQU  $D0D4
+D0REV          EQU  $D100
+D0PIK          EQU  $D14A
+BASCALC        EQU  $FBC1
+WAIT           EQU  $FCA8
+SETINV         EQU  $FE80
+SETNORM        EQU  $FE84
+               JMP  BOOTUP0
+               ASC  " HRF.140 by MARQUE'"
+               HEX  3838
+               ASC  " systems "
+STOREA         DS   1          ;Entry accum
+STOREA1        DS   1          ;Txt mded^
+PS             DS   1          ;?er/scrn
+ESCFLG         DS   1          ;bit7=1=on
+BIND           DS   1
+MEMWID         DS   1
+TXTWID         DS   1
+ATXTNDX        DS   1
+LASTV          DS   1
+HLD1           DS   1
+HLD2           DS   1
+HLD3           DS   1
+HLD4           DS   1
+RBASL          DS   1
+RBASH          DS   1
+HOMSTK         DS   1
+BOOTUP0        JSR  IOSAVE
+               LDA  WRITBSR2
+               LDA  WRITBSR2
+               STA  ALTZPOFF
+               LDX  #0
+TRANSBYT       LDA  FREMEM,X
+               STA  SETID,X
+               INX
+               BNE  TRANSBYT
+               STA  ALTZPON
+               STX  CHRL
+               LDA  #$D0
+               STA  CHRH
+               LDY  #>ALTD02
+               LDA  #<ALTD02
+               STA  GRPHL
+               STY  GRPHH
+               INX
+               LDY  #$FF
+XBYT           LDA  (GRPHL),Y
+               STA  (CHRL),Y
+               DEY
+               CPY  #$FF
+               BNE  XBYT
+               DEX
+               BMI  ABOUT
+               INC  GRPHH
+               INC  CHRH
+               LDY  #$56
+               BNE  XBYT
+BOOTUP         JSR  IOSAVE
+ABOUT          LDX  HOMSTK
+               STA  ALTZPOFF,X
+               LDA  #$8C       ;wdth
+               STA  $21
+               LDA  #0         ;LM
+               STA  $20
+               STA  $22        ;Top
+               LDA  #$18       ;Bttm
+               STA  $23
+               STA  STROF80
+               STA  COL80ON
+               LDA  TEXTOFF
+               LDA  MIXEDOFF
+               LDA  HIRESON
+               STA  IOUOFF
+               STA  DHIRESON
+               LDA  PAGE2OFF
+               LDY  #$4F
+INITVEC        LDA  VECTBL,Y
+               STA  FONTADDR,Y ;Vktr tbl
+               DEY
+               BPL  INITVEC
+               LDA  VMODE
+               AND  #$D7
+               ORA  #8
+               STA  VMODE
+               JSR  EVFON
+               JSR  ESC@
+                               ;Chk BASIC ptrs
+               LDA  $68
+               CMP  #$40
+               BCS  HOOKUP     ;If @ $4000, skp
+               LDA  #$40
+               STA  $68
+               STA  $6A
+               STA  $6C
+               STA  $6E
+               STA  $B0
+               LDX  #4
+               STX  $69
+               STX  $6B
+               STX  $6D
+               STX  $AF
+               LDA  #1
+               STA  $67
+               LSR
+STZ0           STA  $4000,X
+               DEX
+               BPL  STZ0
+HOOKUP         LDA  #$80
+               STA  PS
+               JSR  OUTDEV
+               JMP  SWREST
+                               ;
+IOSAVE         CLD
+               STY  $35
+               STX  $EB
+               STA  STOREA
+               STA  STOREA1
+               LDA  BASL
+               STA  RBASL
+               LDA  BASH
+               STA  RBASH
+               PLA
+               TAX
+               PLA
+               TAY
+               INX
+               BNE  NOHI
+               INY
+NOHI           STX  RETVECL
+               STY  RETVECH
+               BIT  RDBANK2
+               PHP
+               BIT  RDLCRAM
+               PHP
+               BIT  WRITBSR1
+               BIT  WRITBSR1
+               LDA  #0
+               ASL  ALTZP
+               ROR
+               STA  HOMSTK
+               HEX  4C
+RETVECL        HEX  00
+RETVECH        HEX  00
+                               ;Outpt
+KOUT2          JSR  IOSAVE
+               JSR  ENVIRON
+               CLC
+               ROR  BIND
+               LDA  STOREA
+               BIT  VFACTV
+               BPL  ACTIV
+               CMP  #$A0
+               BCC  ISCTRL
+               AND  INVFLG
+ISCTRL         STA  STOREA1
+               JSR  PROCESS
+               JMP  IOREST
+ACTIV          JSR  VFPROC
+IOREST         LDA  STOREA
+XYREST         JSR  RESTBAS
+               LDY  $35
+               LDX  $EB
+               JMP  SWITCHES
+SWREST         JSR  RESTBAS
+SWITCHES       PLP
+               BPL  NOBANX
+               PLP
+               BPL  DX1
+               BIT  RDWRBSR2
+               BIT  RDWRBSR2
+               RTS
+DX1            BIT  RDWRBSR1
+               BIT  RDWRBSR1
+               RTS
+NOBANX         PLP
+               RTS
+                               ;Rest BAS cntnts
+RESTBAS        LDX  RBASH
+               STX  BASH
+               LDX  RBASL
+               STX  BASL
+               RTS
+                               ;PROC CTL CDES
+PROCESS        BIT  ESCFLG     ;On?
+               BPL  CTLOOK     ;=>-
+               JMP  ESCPROC
+CTLOOK         TAX
+               BPL  LEGJMP
+               CMP  #$A0
+               BCC  KRTL
+LEGJMP         JMP  LEGAL2
+KRTL           LDX  #9         ;Gbl spcl ctls
+DYCTRL         PHA
+               LDA  VMODE
+               AND  #$28
+               EOR  #8
+               BNE  CTRL5      ;=>No Ctls
+               PLA
+CTLMTCH        CMP  EVFTBL,X
+               BEQ  EGZEK
+               DEX
+               BPL  CTLMTCH
+               BMI  CTRL51
+EGZEK          TXA
+               CMP  #5
+               BCC  STAKIT
+               ADC  #1
+               CLC
+STAKIT         ADC  #2
+               ASL
+               JMP  SUBROUTE
+CTRL5          PLA
+CTRL51         CMP  #$8D
+               BNE  LEFT4
+               TSX             ;  -
+               LDA  $10C,X     ;Hi |
+               CMP  #$D7       ;   |Chk 4
+               BNE  CROUT2     ;   |BASIC LIST
+               LDA  $10B,X     ;Lo |CR
+               CMP  #$D        ;   |
+               BNE  CROUT2     ;  -
+               LDA  $24        ;Get hrz pos
+               CMP  #$85       ;@ or pst 133rd col?
+               BCS  CROUT2     ;=>+
+               LDA  #$11       ;]_NO, skp pst frmtng
+               STA  $10B,X     ;] cde (Ignore CR)
+               RTS
+                               ;Prcss lst 4 ctl cdes
+LEFT4          CMP  #$9B       ;Esc?
+               BNE  LEFT3      ;=>-
+IKSKAPE        SEC             ;\_
+               ROR  ESCFLG     ;/ Esc mde on
+XIT            RTS
+LEFT3          CMP  #$88       ;BS?
+               BNE  LEFT2      ;=>-
+LEFT           DEC  $57B
+               DEC  $24
+               LDX  $24
+               CPX  #$FF
+               BNE  XIT
+               LDX  $21
+               DEX
+               STX  $24
+               STX  $57B
+UP             LDX  $25
+               CPX  $22        ;@ top of wndw?
+               BEQ  XIT        ;=>+
+               DEC  $25
+NEWBAS         LDA  #$FF
+               STA  LASTV
+               RTS
+LEFT2          CMP  #$87       ;BEL?
+               BNE  LEFT1      ;=>-
+               JMP  (BELVEC)   ;Biep!
+LEFT1          CMP  #$8A       ;LF?
+               BEQ  LINEFEED   ;=>+
+LEGAL          LDA  STOREA1
+LEGAL1         STA  STOREA1
+LEGAL2         JSR  BLSTCHR1
+               BIT  BIND       ;Chr undef'd?
+               BMI  XIT        ;=>+
+RIGHT          INC  $57B
+               INC  $24        ;Advnce
+               LDA  $24        ;\_
+               CMP  $21        ;/ Chk 4 endo scrn
+               BCS  NOPAUSE    ;=>Was endo scrn
+               RTS
+                               ;-CR prcssng-
+CROUT2         LDY  $C000
+               CPY  #$93       ;CTL-S?
+               BNE  NOPAUSE    ;=>-
+               BIT  $C010      ;AKD off
+PAUSELP        LDY  $C000      ;\
+               BPL  PAUSELP    ;/PAWS
+               CPY  #$83       ;CTL-C?
+               BEQ  NOPAUSE    ;=>+, leave AKD on
+               BIT  $C010      ;AKD OFF
+NOPAUSE        LDA  #0
+               STA  $24
+               STA  $57B
+LINEFEED       INC  $25
+               LDA  $25        ;\_@ bttm
+               CMP  $23        ;/ of wndw?
+               BCC  NEWBAS     ;=>-
+               JSR  SCROLL
+               LDX  $23
+               DEX
+               TXA
+SETLYNE        STA  $25
+               JMP  NEWBAS
+                               ;EVF prcssng
+VFPROC         BIT  ESCFLG
+               BMI  ESCPROC
+               TAX
+               BPL  LEGAL2
+               CMP  #$A0
+               BCC  VFCTRL
+               BIT  INVFLG
+               BMI  LEGAL2
+               AND  #$7F
+               PHA
+               LDA  VMODE
+               LSR             ;Mausmoade?
+               PLA
+               BCC  LEGAL1     ;? le mice
+               CMP  #$60
+               BCS  LEGAL1
+               CMP  #$40
+               BCC  LEGAL1
+               SBC  #$40
+               BCS  LEGAL1
+VFCTRL         LDX  #$F
+               JMP  DYCTRL
+                               ;Esc cdes, ?ed
+ESCPROC        CLC             ;\_
+               ROR  ESCFLG     ;/ flg off
+               TAX
+               BMI  LAMRON
+               EOR  #$20
+               AND  #$BF
+               CLC
+               ADC  #$A0
+LAMRON         CMP  #$A0
+               BEQ  SCOROFF
+               CMP  #$DF
+               BEQ  SCORON
+               CMP  #$B0       ;-
+               BCC  HLP        ; |0 to 9
+               CMP  #$BA       ;-
+               BCS  HLP
+               AND  #$F
+               ASL
+               STA  CHARARG
+               RTS
+HLP            JMP  LEGAL
+SCOROFF        LDA  #0
+               STA  UNDRSCR
+               RTS
+SCORON         LDA  #$80
+               STA  UNDRSCR
+               RTS
+                               ;Xtra CTL cde rtns
+DNSCRL         LDA  $25
+               PHA
+               JSR  DROP
+               JMP  RESTCV
+UPSCRL         LDA  $25
+               PHA
+               JSR  SCROLL
+RESTCV         PLA
+               STA  $25
+               JMP  NEWBAS
+                               ;
+HOUSE          LDA  #0
+               STA  $24
+               STA  $57B
+               LDA  $22
+               STA  $25
+               RTS
+                               ;
+ENTLN          LDA  $25
+               JSR  KLERINT
+               LDA  $20
+               LDY  $21
+               JSR  SCRLINIT
+               STA  ALTZPON
+               LDA  CHRL
+               STA  LINSTRS
+               LDX  HOMSTK
+               STA  ALTZPOFF,X
+               JSR  BLAK
+               JMP  NEWBAS
+                               ;
+EVFON          CLC
+               HEX  24         ;(BIT zpg)
+EVFOFF         SEC
+               ROR  VFACTV
+               RTS
+                               ;
+MAUSON         LDA  VMODE
+               AND  #$FE
+EMMAUS         STA  VMODE
+               RTS
+MAUSOFF        LDA  VMODE
+               ORA  #1
+               BNE  EMMAUS
+                               ;
+INVON          JSR  SETINV
+               LDA  VMODE
+               ORA  #4
+               BNE  EMMAUS
+INVOFF         JSR  SETNORM
+               LDA  VMODE
+               AND  #$FB
+               JMP  EMMAUS
+                               ;SCRL RTN
+DESTLN         JSR  BASCALC    ;Init dst ln
+               LDX  BASH
+               STA  ALTZPON
+               STA  SLTXT1
+               STA  GRPHL
+               TXA
+               STA  SHTXT1
+               CLC
+               ADC  PAGE
+               ADC  #$1C
+               STA  GRPHH
+ADRSTK         LDX  HOMSTK
+               STA  ALTZPOFF,X
+               RTS
+                               ;Init src ln
+SRCLN          JSR  BASCALC
+               LDX  BASH
+               STA  ALTZPON
+               STA  SLTXT
+               STA  CHRL
+               TXA
+               STA  SHTXT
+               CLC
+               ADC  PAGE
+               ADC  #$1C
+               STA  CHRH
+               BNE  ADRSTK
+                               ;Xtra 60 cols dst init
+AUXDEST        JSR  EXBAS
+               TAY
+               LDA  XBASL
+               STA  ALTZPON
+               STA  ALTXT1
+               STY  AHTXT1
+               JMP  ADRSTK
+                               ;Dn
+DROP           SEC
+               ROR  BIND
+               LDY  $23
+               DEY
+               STY  $25
+               TYA
+               BIT  WRITBSR2
+               BIT  WRITBSR2
+               JSR  DESTLN
+               DEY
+               TYA
+               JSR  SRCLN
+               LDA  $25
+               JSR  AUXDEST
+               SEC
+               SBC  #$1E
+               BCS  SAMCOD
+               DEY
+               BCC  SAMCOD
+                               ;Up
+SCROLL         CLC
+               ROR  BIND
+               LDY  $22
+               TYA
+               INY
+               STY  $25
+               BIT  WRITBSR2
+               BIT  WRITBSR2
+               JSR  DESTLN
+               TYA
+               JSR  SRCLN
+               LDA  $22
+               JSR  AUXDEST
+               CLC
+               ADC  #$1E
+               BCC  SAMCOD
+               INY
+SAMCOD         STA  ALTZPON
+               STA  ALTXT
+               STY  AHTXT
+               STA  ALTZPOFF,X
+               LDA  $20
+               LDY  $21
+               JSR  SCRLINIT
+               STA  ALTZPON
+               LDX  CHRH
+               SEC
+               LDY  #$2A       ;Cnt 4 lyp
+INITSTRS       LDA  CHRL
+               STA  LINSTRS,Y
+               TXA
+               STA  HINSTRS,Y
+               SBC  #4
+               TAX
+               LDA  GRPHH
+               STA  HINSTRS1,Y
+               SBC  #4
+               STA  GRPHH
+               LDA  GRPHL
+               STA  LINSTRS1,Y
+               TYA
+               SBC  #6
+               TAY
+               BCS  INITSTRS
+GETY           LDY  INDEX
+               BIT  MARWID     ;Do RM?
+               BVC  BYTCOP     ;=>-
+               LDA  RMS        ;# RMing #
+               STA  BASL
+               LDA  RMD
+               STA  BASH
+               LDX  HOMSTK
+               STA  ALTZPOFF,X
+               BIT  MEMWID
+               JSR  MARKOP
+               BIT  MEMWID
+               BPL  AUX1ST
+               DEY
+AUX1ST         BIT  MARWID
+BYTCOP         BMI  COPY       ;=>do byt cpy
+               BPL  JDGLM
+COPY           STA  ALTZPON
+               BIT  MEMWID
+               JMP  D0SCRL
+                               ;
+JDGLM          STA  ALTZPON
+               BIT  BIND
+               BPL  TXTLN
+               LDA  LMS        ;] LMing [
+               STA  BASL
+               LDA  LMD
+               STA  BASH
+               LDX  HOMSTK
+               STA  ALTZPOFF,X
+               JSR  MARKOPL
+               STA  ALTZPON
+TXTLN          LDX  #1
+               BIT  TXTWID
+               JMP  D0TXT
+INSIDE         LDX  #1
+               STA  RAMWRTOF
+               BIT  TXTWID
+               JMP  D0TXTA
+                               ;Reinitin'
+CHKLN          LDA  #$10
+               STA  BCSTX
+               STA  BCATX
+               STA  RAMWRTOF
+               LDX  HOMSTK
+               STA  ALTZPOFF,X
+               LDY  $25        ;Git ln #
+               BIT  BIND
+               BVC  UPCHEK     ;=>scrl up
+               DEY
+               CPY  $22        ;Bttm ln @ top?
+               BNE  BLECH      ;=>-
+               JMP  BLAK
+UPCHEK         INY
+               CPY  $23        ;Bttm ln > bttm?
+               BCC  BLECH      ;=>-
+               JMP  BLAK
+BLECH          STY  $25        ;Str ln #
+               STA  ALTZPON
+               LDA  HINSTRS2
+               CPY  #8
+               BEQ  WCHTHRD
+               CPY  #$10
+               BNE  REG
+                               ;LNS +ING SCRN 1/3
+WCHTHRD        BIT  BIND
+               BVC  THOIDS
+               CLC
+               ADC  #3
+               TAX             ;4 dn
+               LDA  LINSTRS
+               ADC  #$58
+               BMI  IOPNST
+                               ;
+THOIDS         SEC
+               SBC  #3
+               TAX             ;4 up
+               LDA  LINSTRS
+               SBC  #$58
+               BPL  IOPNST
+                               ;LNS IN 1/3
+REG            TAX
+               LDA  LINSTRS
+               BIT  BIND
+               BVC  UPREG
+               EOR  #$80
+               BPL  IOPNST     ;4 dn
+               DEX
+               BNE  IOPNST
+                               ;
+UPREG          EOR  #$80
+               BMI  IOPNST     ;4 up
+               INX
+IOPNST         STA  BASH       ;REINIT LYP
+               LDY  #$2A
+               SEC
+OPINST         LDA  HINSTRS,Y
+               STA  HINSTRS1,Y
+               LDA  LINSTRS,Y
+               STA  LINSTRS1,Y
+               TXA
+               STA  HINSTRS,Y
+               SBC  #4
+               TAX
+               LDA  BASH
+               STA  LINSTRS,Y
+               TYA
+               SBC  #6
+               TAY
+               BCS  OPINST     ;<-Endo lyp
+               TXA
+               ADC  #4
+               SEC
+               SBC  PAGE
+               LDX  SHTXT
+               STX  SHTXT1
+               LDX  SLTXT
+               STX  SLTXT1
+               STA  SHTXT
+               LDA  BASH       ;A lo byt
+               LDX  CHRL       ;\
+               STX  GRPHL      ; |4 the mrgnng rtns
+               STA  CHRL       ;/
+               SBC  HLD4       ;Rid of grphcs offst
+               CLC
+               ADC  HLD3       ;Prpr txt offst
+               STA  SLTXT
+               LDA  ALTXT      ;-
+               LDY  AHTXT      ;|
+               STA  ALTXT1     ;|
+               STY  AHTXT1     ;|
+               BIT  BIND       ;|
+               BVC  UPADD      ; \
+               SEC             ;dn|
+               SBC  #$1E       ; / Reinit
+               STA  ALTXT      ;|le aux
+               BCS  ROMP       ;|txt oprnds
+               DEY             ;|
+               BCC  ROMP       ; \
+UPADD          CLC             ;up|
+               ADC  #$1E       ; /
+               STA  ALTXT      ;|
+               BCC  ROMP       ;|
+               INY             ;|
+ROMP           STY  AHTXT      ;-
+               JMP  GETY       ;& cpy nxt ln
+                               ;LN CLEAR
+BLAK           STA  ALTZPON
+               LDX  SLTXT      ;-
+               LDA  SHTXT      ;|
+               STA  SHTXSTA    ;|
+               STX  SLTXSTA    ;|Xfer the
+               LDA  ALTXT      ;|txt addrss
+               LDX  AHTXT      ;|
+               STA  ALTXSTA    ;|
+               STX  AHTXSTA    ;-
+               LDY  BCTERM
+               STY  BLKBC
+               LDA  HINSTRS
+               LDX  LINSTRS
+               CLC
+               ADC  #$1C
+               SEC
+               LDY  #$15
+BLKINIT        STA  HGRSTA,Y
+               SBC  #4
+               STA  BASH
+               TXA
+               STA  LGRSTA,Y
+               LDA  BASH
+               DEY             ;-
+               DEY             ;|Cont lyp?
+               DEY             ;-
+               BPL  BLKINIT    ;=>+
+               LDX  HOMSTK
+               STA  ALTZPOFF,X
+               LDA  #0
+               LDY  #$A0
+               BIT  VFACTV
+               BMI  CLEARSET
+               BIT  INVFLG
+               BMI  CLEARSET
+               CLC
+               LDA  #$7F
+               LDY  #$20
+CLEARSET       ROR  BIND
+               STA  ESCFLG
+               STA  ALTZPON
+               STY  ZPG1
+               LDA  BIND
+               STA  ZPG2
+               LDY  INDEX
+               BIT  MARWID
+               BVC  BYTBLK     ;=>no RMing
+               LDA  RMD
+               STA  BASH
+               LDA  RMS        ;\_
+               STA  BASL       ;/ 4 EVF inv
+               LDX  HOMSTK
+               STA  ALTZPOFF,X
+               BIT  MEMWID
+               JSR  MARBLQ
+               BIT  MEMWID
+               BPL  AUX2ND
+               DEY
+AUX2ND         BIT  MARWID
+BYTBLK         BMI  BLK        ;=>do byt clrng
+               BPL  SILM
+                               ;BYT CLR
+BLK            BIT  MEMWID
+               BPL  BEY0
+MNBLK          SEC
+AUXBLK         LDA  ESCFLG
+               HEX  99         ;STA abs,Y
+LGRSTA         HEX  FF
+HGRSTA         HEX  FF
+                               ;
+               STA  $FFFF,Y
+               STA  $FFFF,Y
+               STA  $FFFF,Y
+               STA  $FFFF,Y
+               STA  $FFFF,Y
+               STA  $FFFF,Y
+               STA  $FFFF,Y
+                               ;
+               BCC  YNUT
+BEY0           TYA
+               BNE  AUXRUN
+               BVS  SILM
+AUXRUN         STA  RAMWRTON
+               CLC
+               BCC  AUXBLK
+YNUT           STA  RAMWRTOF
+               DEY
+BLKBC          BPL  MNBLK      ;Mod brnch, BNE or BPL
+SILM           BIT  BIND
+               BVC  TXTBLK
+               STA  ALTZPON
+               LDA  LMD
+               STA  BASH
+               LDA  LMS        ;\_
+               STA  BASL       ;/ 4 EVF inv
+               LDX  HOMSTK
+               STA  ALTZPOFF,X
+               JSR  MARBLQL
+TXTBLK         STA  ALTZPON
+               LDX  #1
+               LDA  ZPG1       ;Inv or nrml spc
+               BIT  TXTWID
+               BMI  STDBLK
+               BVC  AUXTXBLK
+STDBLK         LDY  TXTNDX
+               BMI  UNCOL
+STXBLK         HEX  99         ;STA abs,Y
+SLTXSTA        HEX  FF
+SHTXSTA        HEX  FF
+               DEY
+BCSBL          BPL  STXBLK
+UNCOL          DEX
+               BMI  O61
+               LDY  HLD1
+               STY  BCSBL
+               STA  RAMWRTON
+               LDY  XBASL
+               BPL  STXBLK
+O61            STA  RAMWRTOF
+               BIT  TXTWID     ;Blk out aux txt ln?
+               BPL  FINISHD    ;=>-
+               LDX  #1
+AUXTXBLK       LDY  ATXTNDX
+               BMI  XABLK
+ATXBLK         HEX  99         ;STA abs,Y
+ALTXSTA        HEX  FF
+AHTXSTA        HEX  FF
+               DEY
+BCABL          BPL  ATXBLK
+XABLK          DEX
+               BMI  FINISHD
+               LDY  HLD2
+               STY  BCABL
+               STA  RAMWRTON
+               LDY  XBASH
+               BPL  ATXBLK
+FINISHD        STA  RAMWRTOF
+               BIT  WRITBSR1
+               BIT  WRITBSR1
+               LDA  #$10
+               STA  BCSBL
+               STA  BCABL
+               JMP  ADRSTK
+                               ;Mar cpy
+MARKOPL        LDA  MEMWID
+               ASL
+MARKOP         SEC
+               STA  ALTZPON
+               JMP  D0MCOP
+                               ;Mar clr
+MARBLQL        LDA  MEMWID
+               ASL
+MARBLQ         STA  ALTZPON
+               JMP  D0MCLR
+                               ;Hrzntl init
+SCRLINIT       STA  ALTZPON
+               BIT  RDWRBSR2
+               BIT  RDWRBSR2
+               STA  BASL
+               DEY
+               STY  BASH
+               LDX  HOMSTK
+               STA  ALTZPOFF,X
+               JSR  INDECES
+               STA  ALTZPON
+               TXA
+               STA  LMD        ;sve sbcol 4 LM
+               LSR
+               CLC
+               ADC  INDEX
+               LSR
+               ROR  MEMWID
+               CLC
+               STA  ZPG1
+               STA  HLD4
+               ADC  GRPHL      ;]_dst (Hi ln)
+               STA  GRPHL      ;] bse adr
+               LDA  ZPG1
+               ADC  CHRL       ;]_src (Lo ln)
+               STA  CHRL       ;] bse adr
+               LDA  BASH
+               ADC  BASL       ;Get abs loc of RM col
+               LDX  HOMSTK
+               STA  ALTZPOFF,X
+               JSR  INDECES
+               STA  ALTZPON
+               CLC
+               ROR  MARWID
+               TXA
+               STA  RMD        ;save subcol 4 RM
+               LSR
+               ROR  MARWID
+               CLC
+               ADC  INDEX
+               LSR
+               ROR  MEMWID     ;7bt:0=not main @ RM
+               CPX  #6
+               BEQ  PAS
+               LDA  MEMWID
+               EOR  MARWID
+               EOR  #$80       ;NEOR
+               STA  MEMWID
+PAS            TXA
+               LSR
+               ADC  INDEX      ;C uzd
+               LSR
+               SEC
+               SBC  ZPG1
+               STA  INDEX      ;Grphcs scrn indx
+               LDA  BASL       ;TXT ADRSSNG
+               CMP  #$50
+               ROR
+               EOR  #$80
+               STA  TXTWID
+               LDA  BASL
+               CLC
+               ADC  BASH
+               CMP  #$50
+               ROR
+               AND  TXTWID
+               ASL
+               ROR  TXTWID
+               LDA  BASL
+               LSR
+               LDX  #$10
+               BCC  PLS1
+               LDX  #$D0
+PLS1           STX  HLD1
+               STA  ZPG2
+               CLC
+               ADC  SLTXT1
+               STA  SLTXT1
+               LDA  ZPG2
+               ADC  SLTXT
+               STA  SLTXT
+               LDA  BASL       ;-
+               SEC             ;|Aux
+               SBC  #$50       ;|area LM
+               BPL  STRH       ;|bse offst
+               LDA  #0         ;-
+STRH           LSR
+               LDX  #$10
+               BCC  PLS2
+               LDX  #$D0
+PLS2           STX  HLD2
+               STA  ZPG1
+               CLC
+               ADC  ALTXT1
+               STA  ALTXT1
+               BCC  NOINK
+               INC  AHTXT1
+               CLC
+NOINK          LDA  ZPG1
+               ADC  ALTXT
+               STA  ALTXT
+               BCC  NOINCK
+               INC  AHTXT
+NOINCK         LDA  BASH
+               CLC
+               ADC  BASL
+               LSR
+               ROR  XBASH
+               STA  XBASL
+               BIT  TXTWID     ;How 2 fx the txt indcs
+               BMI  SPLIT
+               SEC
+               SBC  ZPG2
+               ASL  XBASH
+               LDX  BASL
+               BEQ  OVR
+ALKS           STA  XBASL
+               STA  XBASH
+               SBC  #0
+MINDX          STA  TXTNDX
+               STA  ATXTNDX
+               JMP  FIXMAR
+OVR            BCC  ALKS
+               SBC  #1
+               STA  XBASL
+               STA  XBASH
+               TXA
+               BEQ  MINDX
+SPLIT          SEC
+               SBC  #$28
+               ASL  XBASH
+               STA  XBASH
+               SBC  #0
+               STA  ATXTNDX
+               LDA  BASH
+               LSR
+               ROR  XBASL
+               SEC
+               SBC  XBASH
+               LDX  BASL
+               CPX  #$4F
+               BEQ  SPEC
+               TAY
+               TXA
+               LSR
+               TYA
+               BCC  DEK
+               ASL  XBASL
+DEK            SBC  #0
+               STA  XBASL
+               STA  TXTNDX
+               BPL  FIXMAR
+SPEC           LDX  #0
+               STX  TXTNDX
+               DEX
+               STX  XBASL
+                               ;Init mar flgs/msks
+FIXMAR         LDA  RMD        ;RM
+               CMP  #6
+               BEQ  NOTRM      ;=>no RM
+               TAX
+               LDA  BASH       ;Ttl # of cols=1?
+               BNE  SETMSK     ;=>-
+               CPX  #2
+               BEQ  X6
+               CPX  #4
+               BNE  SETMSK
+               LDX  #7
+               HEX  2C         ;(BIT)
+X6             LDX  #6
+SETMSK         LDA  LDRSMSK,X
+               STA  RMS
+               LDA  LSRDMSK,X
+               STA  RMD
+               SEC
+               HEX  24         ;(BIT $18)
+NOTRM          CLC
+               ROR  MARWID     ;7 bit:0=no RM
+               LDX  BASH       ;Rcvr cols #|BYT CPY
+               LDA  LMD
+               CPX  #0
+               BEQ  NOBYTCPY   ;=>+
+               CPX  #1
+               BEQ  TWOCOL     ;=>=2
+               CPX  #2
+               BNE  BYTCPY     ;=> >3
+               CMP  #2         ;Sbcol=2?
+               BEQ  NOBYTCPY
+               BNE  BYTCPY
+TWOCOL         CMP  #5         ;If sbcol=5,
+               BEQ  BYTCPY
+               TAX             ;or 0,
+               BEQ  BYTCPY     ;do byt cpy
+NOBYTCPY       CLC
+               HEX  24         ;(BIT)
+BYTCPY         SEC
+               ROR  MARWID     ;7 bit:0=no byt cpy
+                               ;6 bit:0=no RM
+               TAX             ;sbcol=0? LFT MAR
+               TAY
+               BEQ  NOTLM
+               LDA  BASH       ;# cols=1?
+               BNE  DOLM       ;=>-
+               CPX  #2
+               BEQ  NOTLM
+               CPX  #4
+               BEQ  NOTLM
+DOLM           DEX
+               LDA  LDRSMSK,X
+               STA  LMD
+               LDA  LSRDMSK,X
+               STA  LMS
+               LDA  MEMWID
+               EOR  #$40
+               STA  MEMWID
+               BIT  MEMWID
+               BVS  NOTLM
+               LDA  #$D0       ;Opcde 4 BNE
+               HEX  2C         ;BIT
+NOTLM          LDA  #$10       ;Opcde 4 BPL
+               STA  BCTERM
+               CLC
+               TYA
+               BEQ  RER
+               SEC
+RER            ROR  BIND
+               LDX  HOMSTK
+               STA  ALTZPOFF,X
+               LDA  $20
+               STA  HLD3
+               RTS
+                               ;RESRT INV VALS
+RESORT         CMP  #$20
+               BCS  FLASHE
+               ADC  #$40       ;Inv caps
+               BCC  INVSET
+FLASHE         CMP  #$40
+               BCC  INVSET     ;=>Inv symbs
+               CMP  #$60
+               BCS  INVSET     ;=>Inv lc
+               SEC
+               SBC  #$40       ;Inv CTL chrs
+INVSET         ORA  #$80
+               LDY  #$FF
+               STY  INVERTO
+               LDY  CHRL
+               STY  WORK
+               LDY  CHRH
+               STY  RMD
+               LDY  #1
+               BNE  MAXN
+                               ;EXT ENT PT
+BLSTCHR        JSR  IOSAVE
+               SEC
+               ROR  BIND
+               JSR  ENVIRON
+                               ;INT ENT PT
+BLSTCHR1       LDA  INVERTO    ;\_
+               PHA             ;/ Save txt mde
+               LDA  READBSR2   ;Read D000 cde
+               STA  ALTZPOFF
+               TSX
+               LDA  $100,X
+               STA  HLD4
+               LDX  #0
+               LDY  CHARARG
+               LDA  FONTADDR,Y
+               STA  CHRL
+               STA  WORK
+               LDA  FONTADDR+1,Y
+               STA  CHRH
+               STA  RMD
+               TYA
+               LSR
+               CMP  #8         ;Use 2nd bit map?
+               BCC  FORST
+               INX             ;+
+FORST          TAY
+               LDA  BITMSK,Y   ;(10 bytes)
+               LDY  #0
+               AND  WHEREMEM,X ;Aux or mn mem?
+               CLC
+               BEQ  RWHORE     ;=>mn
+               SEC
+RWHORE         ROR  MEMWID     ;7 bit:1=set in aux mem
+               JMP  SETID
+GOTSIZ         LDA  STOREA1
+               INY
+MAXN           PHA
+               AND  #$E0
+               ASL
+               ROL
+               ROL
+               ROL
+               TAX             ;Use as indx
+               LDA  BITMSK,X
+               BIT  MEMWID
+               JMP  SETREAD
+CONFIRM        ADC  #$13       ;-
+               BCC  HINOT      ;|
+               CLC             ;|
+               INC  CHRH       ;|Get bse of defs sec
+HINOT          ADC  CHRL       ;|w/ leap indx
+               STA  CHRL       ;|
+               BCC  HIAINT     ;|
+               INC  CHRH       ;-
+HIAINT         LDX  ZPG2       ;Def typ
+               LDY  #0
+               STY  ZPG2
+               LDA  ZPG1       ;chr indx
+               ASL             ;x2
+               ROL  ZPG2
+               CPX  #3         ;lookit deftyp
+               BCC  BYTHRE
+               ASL             ;\
+               ROL  ZPG2       ;/x4
+               BPL  ADDEM      ;alwys takn
+BYTHRE         ADC  ZPG1       ;x3
+               BCC  ADDEM
+               INC  ZPG2
+               CLC
+ADDEM          ADC  CHRL
+               STA  CHRL
+               LDA  ZPG2
+               ADC  CHRH
+               STA  CHRH       ;Adrssng fnshd
+               LDA  INVERTO
+               STA  ZPG1
+               LDA  UNDRSCR
+               STA  ZPG2
+               LDY  #3
+               BIT  MEMWID
+               JMP  LOAD
+TSL            ASL  MEMWID
+                               ;Prep blstng
+TSALB          LDA  #7
+               STA  ZPG1
+               LDA  ORBIT
+               STA  CHRL
+               LDA  MARWID
+               STA  CHRH
+               LDA  ANDNYB
+               STA  BASL
+               LDA  ANDNYB1
+               STA  BASH
+               LDY  INDEX
+               BIT  MEMWID
+               JMP  BLAST
+BAK0           SEC
+               SBC  #$20
+               STA  GRPHH
+               STA  RAMWRTOF
+               JMP  (XECTOR)
+BAK1           LDA  STOREA1
+               LDY  TXTNDX
+               BIT  CHRH
+               JMP  TXBLST
+BAK2           STA  RAMWRTOF
+               BIT  WRITBSR1
+               BIT  WRITBSR1
+               LDA  HLD4
+               TSX
+               STA  $100,X
+               LDX  HOMSTK
+               STA  ALTZPOFF,X
+               PLA
+               STA  INVERTO
+               BIT  BIND       ;Xit 2 extrnl?
+               BMI  EXT        ;=>+
+               RTS
+EXT            JMP  IOREST
+                               ;NON ?ED CHR XIT
+NOTCHR         BIT  WRITBSR1
+               BIT  WRITBSR1
+               LDA  HLD4
+               TSX
+               STA  $100,X
+               LDX  HOMSTK
+               STA  ALTZPOFF,X
+               PLA
+               STA  INVERTO
+               BIT  BIND       ;extrnl?
+               BPL  INTRNL     ;=>-
+               JMP  IOREST     ;Do ext xit
+INTRNL         SEC
+               ROR  BIND       ;"chr not ?ed"
+               RTS
+                               ;SETUP ENVRNMNT
+ENVIRON        LDA  $20
+               CLC
+               ADC  $24
+               PHA
+               JSR  INDECES
+               LDA  ORTBL,X
+               STA  ORBIT
+               LDA  ANDTBL,X
+               STA  ANDNYB
+               EOR  #$7F
+               STA  EORNYB
+               TXA
+               LSR
+               BCC  ADDNDX
+               TAX
+               LDA  ANDTBL1,X
+               STA  ANDNYB1
+               EOR  #$7F
+               STA  EORNYB1
+               TXA
+ADDNDX         ROR  MARWID
+               CLC
+               ADC  INDEX
+               LSR
+               ROR  MEMWID
+               STA  INDEX
+               LDY  #0         ;"Cond init txtbse"
+               LDA  $25
+               CMP  LASTV
+               BEQ  HORIZ
+               STA  LASTV
+               JSR  BASCALC
+               STA  GRPHL
+               LDA  BASH
+               CLC
+               ADC  PAGE
+               STA  GRPHH
+               LDY  #1         ;"Uncond init txtbse"
+HORIZ          PLA
+HZ1            LSR
+               ROR  MARWID
+               TAX
+               SEC
+               SBC  #$28
+               ROR  TXTWID
+               BMI  EXTRA
+               STX  TXTNDX
+               TYA
+               BNE  OUTIT
+               BIT  TXTWID
+               BVC  Z0X
+OUTIT          LDA  $25
+               JSR  BASCALC
+               STA  XBASL
+               LDA  BASH
+               STA  XBASH
+               BNE  Z0X
+EXTRA          CMP  #$1E
+               BCC  STEX
+               LDA  #$1D
+STEX           STA  TXTNDX
+               TYA
+               BNE  OWTIT
+               BIT  TXTWID
+               BVS  Z0X
+OWTIT          LDA  $25
+               JSR  EXBAS
+Z0X            LDA  GRPHL
+               STA  HLD3
+               LDA  GRPHH
+               LDX  XBASL
+               LDY  XBASH
+               BIT  ALTZP
+               STA  ALTZPON
+               BPL  ZX
+               STA  ALTZPOFF
+ZX             STA  GRPHH
+               STX  XBASL
+               STY  XBASH
+               LDA  HLD3
+               STA  GRPHL
+               JMP  ADRSTK
+                               ;Calc horiz indcs
+INDECES        LDY  #$FF
+               SEC
+SUB7           INY
+               SBC  #7
+               BCS  SUB7
+               ADC  #7
+               TAX
+               TYA
+               ASL
+               ASL
+               STA  INDEX
+               RTS
+                               ;CALC XTRA 30 COLS BSE
+EXBAS          STA  ZPG1
+               LDA  #0
+               STA  XBASL
+               LDX  #4
+MOLT           LSR  ZPG1
+               BCC  SPIN
+               CLC
+               ADC  #$1E
+SPIN           ROR
+               ROR  XBASL
+               DEX
+               BPL  MOLT
+               ROR
+               ROR  XBASL
+               ROR
+               ROR  XBASL
+               ROR
+               ROR  XBASL
+               ORA  #8
+               STA  XBASH
+               RTS
+                               ;INPUT
+CEYIN1         STA  (BASL),Y   ;Blot any crsr on txt
+               JSR  IOSAVE
+BUGIN          JSR  ENVIRON
+               JSR  PICK
+               STA  STOREA     ;save
+               JSR  KEYPRESS
+               STA  STOREA1    ;Save
+               TSX
+               LDA  $108,X     ;\_
+               CMP  GTLNCHK+1  ;/ hb GETLN?
+               BNE  XKEYIN2
+               LDA  $107,X     ;\_
+               CMP  GTLNCHK    ;/ lb GETLN?
+               BNE  XKEYIN2
+               LDA  STOREA1
+               CMP  #$95       ;CTL-U?
+               BNE  ESK        ;=>-
+               JMP  IOREST     ;Xit LDA from STOREA
+ESK            CMP  #$9B       ;ESC?
+               BNE  UPWARD     ;=>-
+               JSR  ESCHNDL
+               JMP  BUGIN
+UPWARD         CMP  #$8D       ;CR?
+               BNE  XKEYIN1    ;=>-
+               JSR  ESCE       ;Yes, cler to EOL
+               TSX             ;-
+               LDA  GTLNCHK+3  ;|Skp
+               STA  $108,X     ;|CLREOL call
+               LDA  GTLNCHK+2  ;|in ROM GETLN
+               STA  $107,X     ;-
+               LDA  #$8D
+               LDX  $EB        ;\_
+               STA  $200,X     ;/ Plce in bffr
+XKEYIN1        JMP  XYREST
+XKEYIN2        LDA  STOREA1
+               BMI  XKEYIN1
+                               ;Use kbd inp vctr
+KEYPRESS       JMP  (KEYPRVEC)
+                               ;Mn kbd inp rtn
+STDKEPRS       JSR  CELLREV    ;Inv cell
+               JSR  CYCLE      ;Chk kbd w/dly & altr RND seed
+               BMI  KEYPR      ;=>key prssd
+               JSR  CELLREV    ;Nrml
+               JSR  CYCLE
+               BPL  KEYPRESS   ;=>no key prssd
+               BMI  KEYPR1
+KEYPR          JSR  CELLREV    ;Nrml
+KEYPR1         LDA  $C000      ;Get key val
+               BIT  $C010      ;Trn off AKD flg
+               RTS
+                               ;Dly/kbd chk sbrtn
+CYCLE          LDX  DLYLPCNT   ;Get outer lyp dly val (default=0)
+INKRND         INC  $4E
+               BNE  CHKKBD
+               INC  $4F
+CHKKBD         BIT  $C000      ;Key prssd?
+               BMI  OUTCYCL    ;=>+
+               LDA  DLYVAL     ;Get inner dly (default=$F)
+               JSR  WAIT       ;Call ROM dly sbrtn
+               DEX             ;Endo outer lyp?
+               BNE  INKRND     ;=>-
+OUTCYCL        RTS
+                               ;Cell revrsl
+CELLREV        LDX  #7
+               LDY  INDEX
+               CLC
+               BIT  READBSR2
+               STA  ALTZPON
+               STX  ZPG1
+               LDA  MARWID
+               STA  CHRL
+               LDA  EORNYB
+               STA  BASL
+               LDA  EORNYB1
+               STA  BASH
+               BIT  MEMWID
+               JMP  D0REV
+REVRET         BIT  WRITBSR1
+               BIT  WRITBSR1
+               STA  RAMWRTOF
+               JMP  ADRSTK
+                               ;Pk txt
+PICK           LDY  TXTNDX
+               BIT  READBSR2
+               STA  ALTZPON
+               BIT  MARWID
+               JMP  D0PIK
+MPIK           BIT  WRITBSR1
+               BIT  WRITBSR1
+               JMP  ADRSTK
+                               ;Esc cde sbrtn
+NESTED         TXA
+               AND  #3         ;Off 2 bit
+               TAX
+               JSR  FREE
+               JSR  ENVIRON
+ESCHNDL        JSR  ESCCUR
+EXTESCH        LDX  #7
+ISNSTD         CMP  NESTFUNC,X ;Is nstd fn?
+               BEQ  NESTED     ;=>+
+               DEX             ;End noose?
+               BPL  ISNSTD     ;=>-
+               LDX  #$12
+ISFREE         CMP  FREFUNC,X  ;Is 1 shot fn?
+               BEQ  FREE       ;brantch=yoape
+               DEX             ;Cut noose loose?
+               BPL  ISFREE     ;burntch=mump
+               RTS
+FREE           TXA
+               ASL
+               CMP  #$12       ;Is chrset #?
+               BCS  SETCHGE    ;=>+
+SUBROUTE       TAX
+               LDA  FUNCVEC+1,X
+               PHA
+               LDA  FUNCVEC,X
+               PHA
+               RTS
+                               ;New chrset
+SETCHGE        SBC  #$12       ;Conv to dir chrset #
+               STA  CHARARG
+               RTS
+                               ;Uz vctr 4 alt Esc crsr
+ESCCUR         JMP  (ESCCURV)  ;Ditto
+                               ;Std esc crsr rtn
+STDESCUR       JSR  EXCHCUR
+ESCKEY         BIT  $C000      ;Key prssd?
+               BPL  ESCKEY     ;=>-
+               JSR  EXCHCUR    ;+, turn off Esc crsr
+               LDA  $C000      ;Get key val
+               BIT  $C010      ;Shutoff AKD flg
+               RTS
+                               ;Cell exchge
+EXCHCUR        LDA  RDWRBSR2
+               LDA  RDWRBSR2
+               STA  ALTZPOFF
+               LDX  #3
+FROMTBL        LDA  ESCCURSR,X ;-
+               STA  WORK,X     ;|Tbl -> wrk
+               DEX             ;|
+               BPL  FROMTBL    ;-
+               LDA  #$1C
+               STA  $D0C9
+               LDA  XBASL
+               STA  HLD4
+               LDA  #<SWICH
+               STA  XECTOR
+               LDA  #>SWICH
+               STA  XECTOR+1
+               JMP  TSALB
+SWICH          LDA  #0
+               STA  $D0C9
+               LDA  #<BAK1
+               STA  XECTOR
+               LDA  #>BAK1
+               STA  XECTOR+1
+               LDA  HLD4
+               STA  XBASL
+               LDX  #3
+FROMWRK        LDA  WORK,X     ;-
+               STA  ESCCURSR,X ;|Wrk -> tbl
+               DEX             ;|
+               BPL  FROMWRK    ;-
+               LDA  WRITBSR1
+               LDA  WRITBSR1
+               JMP  ADRSTK
+XECTOR         DFB  <BAK1
+               DFB  >BAK1
+                               ;?er/scrn
+OUTDEV         LDX  #<VECTOUT
+               LDY  #>VECTOUT
+               LDA  PS
+               BMI  TOSCRN     ;=>"Now ?er, chge 2 scrn"
+               LDX  #<TBLIOVEC
+               LDY  #>TBLIOVEC
+TOSCRN         EOR  #$80
+               STA  PS
+               STX  GRPHL
+               STY  GRPHH
+               LDY  #$36
+               LDX  #0
+               LDA  $BF00
+               CMP  #$4C
+               BNE  THREEP3    ;=>Not ProDOS
+               LDY  #$30       ;Lo byt ProDOS BI gbl pg loc
+               LDX  #$BE       ;Hi ""
+THREEP3        STY  CHRL
+               STX  CHRH
+               LDY  #3
+INITIO         LDA  (GRPHL),Y
+               STA  (CHRL),Y
+               DEY
+               BPL  INITIO
+               TXA
+               BNE  DOSXIT
+               JMP  $3EA
+DOSXIT         RTS
+                               ;Cler wndw
+ESC@           LDA  $22
+               JSR  ESCF@
+               LDA  #0
+               STA  $24
+               STA  $57B
+               LDA  $22
+               JMP  SETLYNE
+                               ;EscF sbrtn
+ESCF           JSR  ESCE
+               LDY  $25
+               INY
+               TYA
+                               ;EscF,@ common sbrtn
+ESCF@          CMP  $23        ;Ln # belw btm of wndw?
+               BCC  TINI
+               JMP  ADRSTK
+TINI           JSR  KLERINT
+               LDA  $20
+               LDY  $21
+               JSR  SCRLINIT
+               STA  ALTZPON
+               LDA  CHRL
+               STA  LINSTRS
+               JMP  THICKET
+LINELOOP       CMP  $23
+               BCC  WIPEOUT
+               JMP  NEWBAS
+WIPEOUT        BIT  $C082      ;Off
+               JSR  BASCALC
+               BIT  RDWRBSR2
+               BIT  RDWRBSR2
+               LDX  BASH
+               STA  ALTZPON
+               TAY
+               ADC  HLD4
+               STA  LINSTRS
+               STA  CHRL       ;(mrgns)
+               TYA
+               ADC  HLD3
+               STA  SLTXT
+               TXA
+               STA  SHTXT
+               ADC  PAGE
+               STA  HINSTRS
+               LDA  ALTXT
+               ADC  #$1E
+               BCC  NONK
+               INC  AHTXT
+NONK           STA  ALTXT
+THICKET        LDX  HOMSTK
+               STA  ALTZPOFF,X
+               JSR  BLAK
+               INC  GRPHH
+               LDA  GRPHH
+               BPL  LINELOOP
+                               ;Bse init 4 ESCF,E
+KLERINT        STA  GRPHH
+               BIT  WRITBSR2
+               BIT  WRITBSR2
+               JSR  BASCALC
+               LDX  BASH
+               STA  ALTZPON
+               STA  SLTXT
+               STA  CHRL
+               TXA
+               STA  SHTXT
+               CLC
+               ADC  PAGE
+               STA  HINSTRS
+               LDX  HOMSTK
+               STA  ALTZPOFF,X
+               LDA  GRPHH
+               JSR  EXBAS
+               LDX  XBASL
+               STA  ALTZPON
+               STA  AHTXT
+               STX  ALTXT
+               JMP  ADRSTK
+                               ;EscE sbrtn
+ESCE           LDA  $25
+               JSR  KLERINT
+               LDA  $21
+               SEC
+               SBC  $24
+               TAY             ;wdth
+               LDA  $20
+               CLC
+               ADC  $24        ;Lft mar
+               JSR  SCRLINIT
+               STA  ALTZPON
+               LDA  CHRL
+               STA  LINSTRS
+               LDX  HOMSTK
+               STA  ALTZPOFF,X
+               JSR  BLAK
+               JMP  NEWBAS
+                               ;Ext ESC@ intrfcer
+EXTESC@        JSR  IOSAVE
+               JSR  ESC@
+               JMP  SWREST
+                               ;Ext chr cel rev intrfcer
+EXTCELRV       JSR  IOSAVE
+               JSR  ENVIRON
+               JSR  CELLREV
+               JMP  SWREST
+                               ;Ext esc cde intrfcer
+EXTESC         JSR  IOSAVE
+               JSR  ENVIRON
+               LDA  STOREA
+               JSR  EXTESCH
+               JMP  IOREST
+                               ;Retrv chr frm scrn (X=ln,Y=col)
+SCRNCHR        JSR  IOSAVE
+               LDA  XBASL
+               LDY  XBASH
+               STA  ZPG1
+               STY  ZPG2
+               LDA  $25
+               STA  RMS
+               LDA  $EB
+               STA  $25
+               LDA  $35        ;Reqstd col
+               JSR  HZ1
+               JSR  PICK
+               LDX  RMS
+               STX  $25
+               LDX  ZPG1
+               LDY  ZPG2
+               STX  XBASL
+               STY  XBASH
+               JMP  XYREST
+                               ;DATA TBLS
+                               ;4 Esc cdes
+NESTFUNC       HEX  CACDCBC9888A958B ;J,M,K,I,<-,dwn,->,^
+FREFUNC        HEX  C2C3C1C4C5C6C0   ;B,C,A,D,E,F,@
+               HEX  A0DFB0B1B2B3B4B5 ;spc,_,0,1,2,3
+               HEX  B6B7B8B9         ;6,7,8,9
+FUNCVEC        DFB  <LEFT-1
+               DFB  >LEFT-1
+               DFB  <LINEFEED-1
+               DFB  >LINEFEED-1
+               DFB  <RIGHT-1
+               DFB  >RIGHT-1
+               DFB  <UP-1
+               DFB  >UP-1
+               DFB  <ESCE-1
+               DFB  >ESCE-1
+               DFB  <ESCF-1
+               DFB  >ESCF-1
+               DFB  <ESC@-1
+               DFB  >ESC@-1
+               DFB  <SCOROFF-1
+               DFB  >SCOROFF-1
+               DFB  <SCORON-1
+               DFB  >SCORON-1
+                               ;EVF ctl cdes
+               DFB  <DNSCRL-1
+               DFB  >DNSCRL-1
+               DFB  <UPSCRL-1
+               DFB  >UPSCRL-1
+               DFB  <HOUSE-1
+               DFB  >HOUSE-1
+               DFB  <ENTLN-1
+               DFB  >ENTLN-1
+               DFB  <EVFON-1
+               DFB  >EVFON-1
+               DFB  <EVFOFF-1
+               DFB  >EVFOFF-1
+               DFB  <MAUSON-1
+               DFB  >MAUSON-1
+               DFB  <MAUSOFF-1
+               DFB  >MAUSOFF-1
+               DFB  <INVOFF-1
+               DFB  >INVOFF-1
+               DFB  <INVON-1
+               DFB  >INVON-1
+               DFB  <IKSKAPE-1
+               DFB  >IKSKAPE-1
+                               ;Mtchng cdes
+EVFTBL         HEX  9C9F9D8B8C9697999A92
+               HEX  959B988E8F90 ;Lst is EVF's Esc (DLE)
+                               ;4 ENVIRON
+ANDTBL         HEX  700F611F433F07
+ORTBL          HEX  08011002200440
+ANDTBL1        HEX  7E7C78
+LDRSMSK        HEX  0F011F033F071E3C
+LSRDMSK        HEX  707E607C40786143
+BITMSK         HEX  01020408102040800102
+                               ;VKTR TBL IMGE
+VECTBL         DFB  <LATNTXT   ;\
+               DFB  >LATNTXT   ;/0
+               DFB  <LATNTXT   ;\
+               DFB  >LATNTXT   ;/1
+               DFB  <LATNTXT   ;\
+               DFB  >LATNTXT   ;/2
+               DFB  <LATNTXT   ;\
+               DFB  >LATNTXT   ;/3
+               DFB  <LATNTXT   ;\
+               DFB  >LATNTXT   ;/4
+               DFB  <LATNTXT   ;\
+               DFB  >LATNTXT   ;/5
+               DFB  <LATNTXT   ;\
+               DFB  >LATNTXT   ;/6
+               DFB  <LATNTXT   ;\
+               DFB  >LATNTXT   ;/7
+               DFB  <LATNTXT   ;\
+               DFB  >LATNTXT   ;/8
+               DFB  <LATNTXT   ;\
+               DFB  >LATNTXT   ;/9
+                               ;
+               HEX  0000       ;Wheremem
+                               ;
+               HEX  00         ;Chararg
+               DFB  <FREMEM
+               DFB  >FREMEM
+               HEX  02         ;ID
+                               ;
+               HEX  DF87F0FD00000000 ;Esc crsr pttrn
+                               ;
+               DFB  <STDESCUR  ;\
+               DFB  >STDESCUR  ;/Vktr 2 std esc inp rtn
+                               ;
+               JMP  EXTESC     ;Ext uzr intrfc->esc cde prcssng
+                               ;
+               HEX  00001C77FD8DFD ;Inv, _ Pg, GETLN ret adr, GETLN CR skp
+               HEX  DDFB       ;Vktr 2 BEL1
+                               ;
+               DFB  <STDKEPRS  ;\
+               DFB  >STDKEPRS  ;/Vktr 2 std kbd inp rtn
+                               ;
+VECTOUT        DFB  <KOUT2     ;\
+               DFB  >KOUT2     ;/Imge of sys ent pt 4 otpt
+                               ;
+               DFB  <CEYIN1    ;\
+               DFB  >CEYIN1    ;/Imge of sys ent pt 4 inp
+                               ;
+               HEX  0F00       ;Dly vals 4 CYCLE sbrtn
+               JMP  CYCLE
+               JMP  SCRNCHR
+               JMP  EXTCELRV
+               JMP  ENVIRON
+               JMP  BOOTUP
+               JMP  BLSTCHR
+               JMP  OUTDEV
+               JMP  EXTESC@
+
+*THE CHR SET*
+
+LATNTXT        HEX  02         ;Def typ (# byts -1)
+               HEX  E0         ;Secs uzd
+               HEX  00000000   ;1st haf \_
+               HEX  00002040   ;2nd haf / Sec bse offsts
+               HEX  FFFFFFFF   ;1st haf \_
+               HEX  FF1F1F1F   ;2nd haf /  Sec indces
+                               ;Comp tbl
+               HEX  A0A1A2A3A4A5A6A7
+               HEX  A8A9AAABACADAEAF
+               HEX  B0B1B2B3B4B5B6B7 ;Sec 5
+               HEX  B8B9BABBBCBDBEBF
+                               ;
+               HEX  C0C1C2C3C4C5C6C7
+               HEX  C8C9CACBCCCDCECF
+               HEX  D0D1D2D3D4D5D6D7 ;Sec 6
+               HEX  D8D9DADBDCDDDEDF
+                               ;
+               HEX  E0E1E2E3E4E5E6E7
+               HEX  E8E9EAEBECEDEEEF
+               HEX  F0F1F2F3F4F5F6F7 ;Sec 7
+               HEX  F8F9FAFBFCFDFEFF
+                               ;DEFS
+               HEX  000000     ;spc
+               HEX  005F00     ;!
+               HEX  070007     ;"
+               HEX  3E143E     ;#
+               HEX  2C7F1A     ;$
+               HEX  330866     ;%
+               HEX  3A5572     ;&
+               HEX  000700     ;'
+               HEX  1C2241     ;(
+               HEX  41221C     ;)
+               HEX  367F36     ;*
+               HEX  081C08     ;+
+               HEX  403000     ;,
+               HEX  080808     ;-
+               HEX  004000     ;.
+               HEX  300806     ;/
+               HEX  3E5D3E     ;0
+               HEX  427F40     ;1
+               HEX  625946     ;2
+               HEX  21453B     ;3
+               HEX  18167F     ;4
+               HEX  274539     ;5
+               HEX  3E4932     ;6
+               HEX  710D03     ;7
+               HEX  364936     ;8
+               HEX  26493E     ;9
+               HEX  001400     ;:
+               HEX  403400     ;;
+               HEX  081422     ;<
+               HEX  141414     ;=
+               HEX  221408     ;>
+               HEX  025906     ;?
+               HEX  3E594E     ;@
+               HEX  7E117E     ;A
+               HEX  7F4936     ;B
+               HEX  3E4122     ;C
+               HEX  7F413E     ;D
+               HEX  7F4941     ;E
+               HEX  7F0901     ;F
+               HEX  3E5132     ;G
+               HEX  7F087F     ;H
+               HEX  417F41     ;I
+               HEX  30403F     ;J
+               HEX  7F1463     ;K
+               HEX  7F4040     ;L
+               HEX  7F067F     ;M
+               HEX  7F1C7F     ;N
+               HEX  3E413E     ;O
+               HEX  7F0906     ;P
+               HEX  3E61FE     ;Q
+               HEX  7F1966     ;R
+               HEX  264932     ;S
+               HEX  017F01     ;T
+               HEX  3F403F     ;U
+               HEX  1F601F     ;V
+               HEX  7F307F     ;W
+               HEX  631C63     ;X
+               HEX  077807     ;Y
+               HEX  714947     ;Z
+               HEX  7F7F41     ;[
+               HEX  060830     ;\
+               HEX  417F7F     ;]
+               HEX  020102     ;^
+               HEX  808080     ;_
+               HEX  010204     ;`
+               HEX  205478     ;a
+               HEX  7F4438     ;b
+               HEX  384444     ;c
+               HEX  38447F     ;d
+               HEX  385458     ;e
+               HEX  7E0902     ;f
+               HEX  98A478     ;g
+               HEX  7F0478     ;h
+               HEX  447D40     ;i
+               HEX  40847D     ;j
+               HEX  7F2844     ;k
+               HEX  417F40     ;l
+               HEX  7C1C78     ;m
+               HEX  7C0478     ;n
+               HEX  384438     ;o
+               HEX  FC2418     ;p
+               HEX  1824FC     ;q
+               HEX  7C0804     ;r
+               HEX  585434     ;s
+               HEX  3F4420     ;t
+               HEX  3C407C     ;u
+               HEX  1C601C     ;v
+               HEX  7C307C     ;w
+               HEX  6C106C     ;x
+               HEX  9CA07C     ;y
+               HEX  64544C     ;z
+               HEX  083641     ;{
+               HEX  00FF00     ;|
+               HEX  413608     ;}
+               HEX  030206     ;~
+               HEX  552A55     ;
+                               ;D000 reloc'd cde
+FREMEM         BPL  MAYN
+               STA  RAMRDON
+MAYN           LDA  (WORK),Y
+               STA  ZPG2       ;Def typ
+               STA  RAMRDOFF
+               JMP  GOTSIZ     ;Xit BSR
+               BPL  MAZN
+               STA  RAMRDON
+MAZN           AND  (WORK),Y   ;Any defs in sec?
+               BEQ  NODEFS
+               TXA
+               TAY
+               INY
+               INY
+               LDA  (WORK),Y   ;Sec bse offst
+               STA  ZPG1       ;Save it
+               CLC             ;-
+               ADC  #$12       ;|
+               ADC  WORK       ;|
+               STA  WORK       ;|Adrss bse of sec in comp tbl
+               BCC  SAMEPG     ;|
+               INC  RMD        ;-
+               CLC
+SAMEPG         TYA
+               ADC  #8
+               TAY
+               LDA  (CHRL),Y   ;Get sec indx
+               TAY
+               PLA
+               PHA
+LAUQE          CMP  (WORK),Y
+               BEQ  DEFD
+               DEY
+               BPL  LAUQE
+NODEFS         PLA
+               STA  RAMRDOFF
+               BPL  ABNORMAL
+               JMP  NOTCHR     ;Chr not in set
+ABNORMAL       JMP  RESORT     ;Serch agin
+                               ;SUCCSSFL SERCH
+DEFD           TYA
+               CLC
+               ADC  ZPG1       ;Chr indx
+               STA  ZPG1
+               PLA
+               LDY  #9
+               LDA  (CHRL),Y
+               LDY  #$11
+               ADC  (CHRL),Y   ;Leap indx
+               STA  RAMRDOFF
+               JMP  CONFIRM
+                               ;Wrk lodng
+               BPL  AWKS
+               STA  RAMRDON
+AWKS           LDA  #0
+               CPX  #2
+               BEQ  EITHER
+LODE           LDA  (CHRL),Y
+EITHER         ORA  ZPG2
+               EOR  ZPG1
+               STA  WORK,Y
+               DEY
+               BPL  LODE
+               STA  RAMRDOFF
+               JMP  TSL
+                               ;Blstr
+               BMI  BITX
+               STA  RAMRDON
+               STA  RAMWRTON
+BITX           LDA  CHRL
+               STA  ZPG2
+               LDX  #3
+               BIT  CHRH
+               BVC  NOSHARE
+               BIT  RAMRD
+               BMI  OLF
+               STA  RAMRDON
+               STA  RAMWRTON
+               INY
+               BNE  GET
+OLF            STA  RAMRDOFF
+               STA  RAMWRTOF
+GET            LDA  (GRPHL),Y
+               AND  BASH
+               BPL  DOBIT
+SHIFT          LSR  ZPG2
+               BCC  DOBIT
+               STA  (GRPHL),Y
+               BIT  RAMRD
+               BPL  OLN
+               STA  RAMRDOFF
+               STA  RAMWRTOF
+               DEY
+               BPL  PUT
+OLN            STA  RAMRDON
+               STA  RAMWRTON
+PUT            LDA  #$40
+               STA  ZPG2
+NOSHARE        LDA  (GRPHL),Y
+               AND  BASL
+DOBIT          BPL  AD         ;>
+AD             LSR  WORK,X
+BITENT         BCC  COUNT
+               ORA  ZPG2
+COUNT          DEX
+               BPL  SHIFT
+               STA  (GRPHL),Y
+               CLC
+               LDA  GRPHH
+               ADC  #4
+               STA  GRPHH
+               DEC  ZPG1
+               BPL  BITX
+               STA  RAMRDOFF
+               JMP  BAK0
+               STA  XBASL      ;X
+               LDA  (GRPHL),Y
+               AND  ZPG2
+               SEC
+               BNE  ROAR
+               CLC
+ROAR           ROR  WORK,X
+               LDA  XBASL
+               BPL  BITENT
+                               ;Txtblst
+               BMI  AGESTOR
+               STA  RAMWRTON
+AGESTOR        STA  (XBASL),Y  ;Stor chr on txt scrn
+               JMP  BAK2
+                               ;Byt cpy
+ALTD02         BPL  ISY0
+MNBEGIN        SEC
+AUXBEGIN       LDA  $FFFF,Y
+               STA  $FFFF,Y
+               LDA  $FFFF,Y
+               STA  $FFFF,Y
+               LDA  $FFFF,Y
+               STA  $FFFF,Y
+               LDA  $FFFF,Y
+               STA  $FFFF,Y
+               LDA  $FFFF,Y
+               STA  $FFFF,Y
+               LDA  $FFFF,Y
+               STA  $FFFF,Y
+               LDA  $FFFF,Y
+               STA  $FFFF,Y
+               LDA  $FFFF,Y
+               STA  $FFFF,Y
+                               ;
+               BCC  YZERO
+ISY0           TYA
+               BNE  AUXPASS
+               BVS  OUTBSR
+AUXPASS        STA  RAMRDON
+               STA  RAMWRTON
+               CLC
+               BCC  AUXBEGIN
+YZERO          STA  RAMRDOFF
+               STA  RAMWRTOF
+               DEY
+               BPL  MNBEGIN    ;Mod brnch,BNE or BPL
+OUTBSR         JMP  JDGLM
+                               ;
+               BMI  STDTXT
+               BVC  AUXTXT
+STDTXT         LDY  TXTNDX
+               BMI  XSSET
+STXTCPY        LDA  $FFFF,Y
+               STA  $FFFF,Y
+               DEY
+               BPL  STXTCPY    ;=>gobakan' cpy agin
+XSSET          DEX
+               BMI  O60
+               LDA  HLD1
+               STA  BCSTX
+               STA  RAMRDON
+               STA  RAMWRTON
+               LDY  XBASL
+               BPL  STXTCPY
+O60            STA  RAMRDOFF
+               JMP  INSIDE     ;Uz nonBSR cde
+               BPL  PTOMAIN    ;=>-
+AUXTXT         LDY  ATXTNDX
+               BMI  XASET
+ATXTCPY        LDA  $FFFF,Y
+               STA  $FFFF,Y
+               DEY
+               BPL  ATXTCPY
+XASET          DEX
+               BMI  PTOMAIN
+               LDA  HLD2
+               STA  BCATX
+               STA  RAMRDON
+               STA  RAMWRTON
+               LDY  XBASH
+               BPL  ATXTCPY
+PTOMAIN        STA  RAMRDOFF
+               JMP  CHKLN
+                               ;
+               BPL  SKPX
+               STA  RAMRDON
+               STA  RAMWRTON
+SKPX           LDX  #$2A
+MCOPY          LDA  HINSTRS1,X
+               STA  GRPHH
+               LDA  HINSTRS,X
+               STA  CHRH
+               LDA  (CHRL),Y   ;Lo ln
+               AND  BASL
+               STA  ZPG2
+               LDA  (GRPHL),Y  ;Hi ln
+               AND  BASH
+               ORA  ZPG2
+               STA  (GRPHL),Y
+               TXA
+               SBC  #6
+               TAX
+               BPL  MCOPY
+BSRXIT         STA  RAMRDOFF
+               STA  RAMWRTOF
+               JMP  ADRSTK
+                               ;
+               BPL  SKPY
+               STA  RAMWRTON
+SKPY           ASL  RAMWRT
+               LDX  #$15
+MBLAK          STA  RAMRDOFF
+               LDA  HGRSTA,X
+               STA  CHRH
+               BCC  MNKY
+               STA  RAMRDON
+MNKY           LDA  (CHRL),Y
+               BIT  ZPG2
+               BMI  BLACQ
+               ORA  BASL
+               BNE  BORKUM
+BLACQ          AND  BASH
+BORKUM         STA  (CHRL),Y
+               DEX
+               DEX
+               DEX
+               BPL  MBLAK
+               BMI  BSRXIT
+                               ;
+               BMI  REVNYB
+               STA  RAMRDON
+               STA  RAMWRTON
+REVNYB         BIT  CHRL
+               BVC  NOSPLIT
+               LDX  #0
+               BIT  RAMRD
+               BMI  SWTC
+               INY
+               INX
+SWTC           STA  RAMRDOFF,X
+               STA  RAMWRTOF,X
+               LDA  (GRPHL),Y
+               EOR  BASH
+               STA  (GRPHL),Y
+               LDX  #1
+               BIT  RAMRD
+               BPL  CTWS
+               DEY
+               DEX
+CTWS           STA  RAMRDOFF,X
+               STA  RAMWRTOF,X
+NOSPLIT        LDA  (GRPHL),Y
+               EOR  BASL
+               STA  (GRPHL),Y
+               LDA  GRPHH
+               ADC  #4
+               STA  GRPHH
+               DEC  ZPG1
+               BPL  REVNYB
+               SBC  #$1F
+               STA  GRPHH
+               STA  RAMRDOFF
+               JMP  REVRET
+                               ;
+               BMI  PIK
+               STA  RAMRDON
+PIK            LDA  (XBASL),Y
+               STA  RAMRDOFF
+               JMP  MPIK

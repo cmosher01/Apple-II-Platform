@@ -1,0 +1,51 @@
+AS65 Assembler for R6502 [1.32].  Copyright 1994-2003, Frank A. Vorstenbosch                                             Page    1
+------------------------------------------------------------ MAP.A65 -------------------------------------------------------------
+
+---------------------------------------------------------- Symbol Table ----------------------------------------------------------
+
+              Symbol   Value        Decimal
+
+                 BUF : $4000          16384
+               ENTRY : $0300            768
+                 MLI : $bf00          48896
+              PARAMS : $0315            789
+          READ_BLOCK : $0080            128
+             RETCODE : $0314            788
+          __65SC02__ : $0001              1
+
+7 labels used
+
+25 lines read, no errors in pass 1.
+AS65 Assembler for R6502 [1.32].  Copyright 1994-2003, Frank A. Vorstenbosch                                             Page    2
+------------------------------------------------------------ MAP.A65 -------------------------------------------------------------
+
+bf00 =                       MLI             EQU     $BF00
+0080 =                       READ_BLOCK      EQU     $80
+4000 =                       BUF             EQU     $4000
+                             
+0300 =                                       ORG     $0300
+0300 : 48               [ 3] ENTRY           PHA
+0301 : 98               [ 2]                 TYA
+0302 : 48               [ 3]                 PHA
+0303 : 8a               [ 2]                 TXA
+0304 : 48               [ 3]                 PHA
+0305 : 2000bf           [ 6]                 JSR     MLI
+0308 : 80                                    DB      READ_BLOCK
+0309 : 1503                                  DW      PARAMS
+030b : 8d1403           [ 4]                 STA     RETCODE
+030e : 68               [ 4]                 PLA
+030f : aa               [ 2]                 TAX
+0310 : 68               [ 4]                 PLA
+0311 : a8               [ 2]                 TAY
+0312 : 68               [ 4]                 PLA
+0313 : 60               [ 6]                 RTS
+0314 : 00                    RETCODE         DB      0
+0315 : 03                    PARAMS          DB      3               ; 3 params
+0316 : 60                                    DB      $60             ; slot 6 drive 1
+0317 : 0040                                  DW      BUF             ; buffer for block
+0319 : 0200                                  DW      2               ; block 2
+                             
+No errors in pass 2.
+Wrote binary from address $0300 through $031a.
+Total size 27 bytes.
+

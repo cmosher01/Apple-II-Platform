@@ -1,0 +1,2319 @@
+                                ;
+                                ;
+                                ;
+                                ;    BloXap
+                                ;    Version V01.01
+                                ;    Copyright (C) 2003
+                                ;    by Christopher A. Mosher
+                                ;
+                                ;
+                                ;
+
+
+                CMAP     " ",160,161,162,163,164,165,166,167,168,169,170,171,172,173,174,175,176,177,178,179,180,181,182,183,184,185,186,187,188,189,190,191
+                CMAP     "@",192,193,194,195,196,197,198,199,200,201,202,203,204,205,206,207,208,209,210,211,212,213,214,215,216,217,218,219,220,221,222,223
+                CMAP     "`",224,225,226,227,228,229,230,231,232,233,234,235,236,237,238,239,240,241,242,243,244,245,246,247,248,249,250,251,252,253,254,255
+
+DBUFRADDR      =     $0900
+
+
+
+                                ; page $00 locations
+ADTOP          =     $F8
+BAS            =     $FA        ; base address register for printing ($FA-$FB)
+CURBAS         =     $FC        ; register for current base address ($FC-$FD)
+ADDR           =     $FE        ; address register ($FE-$FF)
+
+
+
+                                ; page $03 locations
+RESETV         =     $03F2
+RESETEOR       =     $A5
+
+
+
+                                ; ProDOS global page
+MLI            =     $BF00      ; machine language interface entry point
+QUIT           =     $65
+READ_BLOCK     =     $80
+WRITE_BLOCK    =     $81
+ERRNODEV       =     $28
+ERRWP          =     $2B
+BITMAP         =     $BF58
+MACHID         =     $BF98
+IBAKVER        =     $BFFC
+IVERSION       =     $BFFD
+KBAKVER        =     $00
+KVERSION       =     $04
+
+
+
+                                ; page $C0 locations
+READKBD        =     $C000
+CLEARKBD       =     $C010
+PAGE2?         =     $C01C
+PAGE1          =     $C054
+PAGE2          =     $C055
+
+
+
+ETYENTRY       =     $C300
+
+
+
+                                ; global table
+               ORG   $2000      ; starting address $2000
+BLOXAP         JMP   INIT       ; BloXap entry point
+
+
+
+CMDTBL                          ; command table (hex values come first)
+
+               DB   "0123456789ABCDEF"
+               DB   "IKJL"
+               DB    $8B,$8A,$88,$95 ; arrows
+               DB   "UORWTS=-+_.,><H?"
+               DB    $9B        ; <esc>
+               DB    $00
+
+
+
+JMPTBL                          ; address table for command routines
+
+               DW    HEX,HEX,HEX,HEX,HEX,HEX,HEX,HEX
+               DW    HEX,HEX,HEX,HEX,HEX,HEX,HEX,HEX
+               DW    UP,DOWN,LEFT,RIGHT,UP,DOWN,LEFT,RIGHT
+               DW    BEGINBLOC,ENDBLOC
+               DW    READ,WRITE,TEXT,SLOT
+               DW    INCBLOCK,DECBLOCK,INCBLOCK,DECBLOCK
+               DW    INCBLOCK,DECBLOCK,INCBLOCK,DECBLOCK
+               DW    HELP,SCAN
+               DW    EXIT
+
+
+
+PAGETBL                         ; table of pages to allocate to BloXap
+               DB    $20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$2A,$2B,$2C,$2D,$2E,$2F,$30,$31,$32
+               DB    0
+
+
+
+                                ; disassembly tables (ROM)
+
+MNEML          DB    $1C,$8A,$1C,$23,$5D,$8B,$1B,$A1,$9D,$8A,$1D,$23,$9D,$8B,$1D,$A1
+               DB    $1C,$29,$19,$AE,$69,$A8,$19,$23,$24,$53,$1B,$23,$24,$53,$19,$A1
+               DB    $AD,$1A,$5B,$5B,$A5,$69,$24,$24,$AE,$AE,$A8,$AD,$29,$8A,$7C,$8B
+               DB    $15,$9C,$6D,$9C,$A5,$69,$29,$53,$84,$13,$34,$11,$A5,$69,$23,$A0
+MNEMR          DB    $D8,$62,$5A,$48,$26,$62,$94,$88,$54,$44,$C8,$54,$68,$44,$E8,$94
+               DB    $C4,$B4,$08,$84,$74,$B4,$28,$6E,$74,$F4,$CC,$4A,$72,$F2,$A4,$8A
+               DB    $06,$AA,$A2,$A2,$74,$74,$74,$72,$44,$68,$B2,$32,$B2,$72,$22,$72
+               DB    $1A,$1A,$26,$26,$72,$72,$88,$C8,$C4,$CA,$26,$48,$44,$44,$A2,$C8
+FMT1           DB    $0F,$22,$FF,$33,$CB,$62,$FF,$73,$03,$22,$FF,$33,$CB,$66,$FF,$77
+               DB    $0F,$20,$FF,$33,$CB,$60,$FF,$70,$0F,$22,$FF,$39,$CB,$66,$FF,$7D
+               DB    $0B,$22,$FF,$33,$CB,$A6,$FF,$73,$11,$22,$FF,$33,$CB,$A6,$FF,$87
+               DB    $01,$22,$FF,$33,$CB,$60,$FF,$70,$01,$22,$FF,$33,$CB,$60,$FF,$70
+               DB    $24,$31,$65,$78
+FMT2           DB    $00,$21,$81,$82,$59,$4D,$91,$92,$86,$4A,$85,$9D,$49,$5A
+CHAR2          DB    $D9,$00,$D8,$A4,$A4,$00
+CHAR1          DB    $AC,$A9,$AC,$A3,$A8,$A4
+OPTBL          DB    $12,$14,$1A,$1C,$32,$34,$3A,$3C,$52,$5A,$64,$72,$74,$7A,$7C,$89
+               DB    $92,$9C,$9E,$B2,$D2,$F2,$FC
+               DB    $00,$00,$00     ; for alignment
+               DB    $8A,$8B,$A5,$AC,$00 ; for MNEML
+INDEX          DB    $38,$FB,$37,$FB,$39,$21,$36,$21,$3A,$F8,$FA,$3B,$FA,$F9,$22,$21
+               DB    $3C,$FA,$FA,$3D,$3E,$3F,$FC,$00
+COPYRIGHT                       ; for alignment (must be $22 (34) bytes)
+               DB              'Copyright (C) 1989 '
+               DB              'by Chris Mosher'
+;               ERR   *-COPYRIGHT-34
+               DB    $74,$74,$76,$C6,$00 ; for MNEMR
+
+
+
+                                ; variables
+ASTO           DB    $00        ; storage register
+CURY           DB    $00        ; HTAB for cursor
+VTAB           DB    $00        ; line number for printing
+INVMASK        DB    $FF        ; inverse AND mask
+BYTES          DS    $10        ; storage for bytes to be printed
+
+
+
+MAINLOOP                        ; the main loop of BloXap
+
+               JSR   CUROUT     ; output the cursor
+               JSR   DSPHELP    ; display the help command indicator
+               JSR   DSPINS     ; display the block of instructions
+               JSR   FETCH      ; fetch a keypress
+               JSR   EXECUTE    ; execute a command
+               BRA   MAINLOOP   ; repeat
+
+
+
+PARMLIST                        ; parameter list for MLI calls
+
+               DB    $03        ; 3 parameters
+UNIT           DB    $60        ; current unit number:
+                                ;    dsss0000 where
+                                ;             d   = drive (0,1)
+                                ;             sss = slot  (1-7)
+DBUFR          DW    DBUFRADDR  ; address of data buffer
+BLOCK          DW    $0000      ; current block
+
+
+
+INIT                            ; initialize
+
+               LDX   #$FF
+               TXS
+               LDA   #LO $FF69
+               STA   RESETV
+               LDA   #HI $FF69
+               STA   RESETV+1
+               EOR   #RESETEOR
+               STA   RESETV+2
+               LDA   #KBAKVER
+               STA   IBAKVER
+               LDA   #KVERSION
+               STA   IVERSION
+               JSR   ALLOCBX
+               JSR   SET80
+               JSR   DSPTITLE
+               JSR   TLHOME
+               JSR   DSPOFS
+               JSR   ZEROBUFR
+               LDA   #LO DBUFRADDR
+               STA   CURBAS
+               LDA   #HI DBUFRADDR
+               STA   CURBAS+1
+               JSR   PRPAGE
+               JSR   DSPINS
+               JSR   DSPSTMES
+               LDA   #0
+               STA   CURY
+               LDA   #4
+               STA   VTAB
+               JMP   MAINLOOP
+
+
+
+WARMUP                          ; warm up routine (do not start)
+                                ; i: none
+                                ; o: BloXap ready for
+                                ;         JMP MAINLOOP
+                                ;         VTAB preserved
+
+               LDA   VTAB
+               PHA
+               JSR   TLHOME
+               JSR   DSPOFS
+               PLA
+               PHA
+               STA   VTAB
+               JSR   RDSK1      ; PRPAGE calculating CURBAS with VTAB
+               JSR   DSPINS
+               JSR   DSPSTMES
+               PLA
+               STA   VTAB
+               RTS
+
+
+
+ALLOCBX                         ; allocate BloXap program in system memory map
+                                ; i: PAGETBL
+                                ; o: BITMAP marked appropriately
+
+               LDX   #0
+ABLP1          LDA   PAGETBL,X
+               BEQ   EXAB
+               PHX
+               PHA              ; abcdefgh
+               AND   #$07       ; 00000fgh
+               TAY
+               LDX   BITMASK,Y  ; get proper bit set in X
+               PLA              ; abcdefgh
+               LSR   A
+               LSR   A
+               LSR   A          ; 000abcde
+               TAY
+               TXA
+               ORA   BITMAP,Y
+               STA   BITMAP,Y
+               PLX
+               INX
+               BNE   ABLP1
+BITMASK        DB               $80,$40,$20,$10,$08,$04,$02,$01
+EXAB           RTS
+
+
+
+SET80                           ; set eighty column screen
+                                ; i: none
+                                ; o: 80 column display enabled
+
+               LDA   MACHID
+               AND   #%00000010 ; 80-column card
+               BNE   S8SK1
+               JMP   EXIT
+S8SK1          LDA   #$92
+               JMP   ETYENTRY
+
+
+
+ZEROBUFR                        ; zero block buffer
+                                ; i: none
+                                ; o: data buffer zeroed
+
+               LDX   #0
+ZBLP           STZ   DBUFRADDR,X
+               INX
+               BNE   ZBLP
+ZBLP2          STZ   DBUFRADDR+$0100,X
+               INX
+               BNE   ZBLP2
+               STZ   DBUFRADDR+$0200,X
+               STZ   DBUFRADDR+$0201,X
+               RTS
+
+
+
+PRPAGE                          ; print a full screen of bytes ($0100)
+                                ; i: CURBAS: starting address
+                                ; o: the printed page
+                                ;         ADDR destroyed
+                                ;         VTAB destroyed
+
+               LDA   #4
+               STA   VTAB
+               LDA   CURBAS
+               STA   ADDR
+               LDA   CURBAS+1
+               STA   ADDR+1
+PRPLP1         JSR   PRLINE
+               CLC
+               LDA   ADDR
+               ADC   #$10
+               STA   ADDR
+               LDA   ADDR+1
+               ADC   #0
+               STA   ADDR+1
+               INC   VTAB
+               LDA   VTAB
+               CMP   #20
+               BNE   PRPLP1
+               RTS
+
+
+
+PRLINE                          ; print a line of bytes
+                                ; input : ADDR: address to start at (lo hi)
+                                ;         VTAB: line number (0 org)
+                                ; o: line is printed
+               LDY   #0
+               JSR   BASCALC    ; use VTAB to calculate BAS
+               LDA   ADDR+1
+               STA   PRLLDA1+2
+               STA   PRLLDA2+2
+               SEC
+               SBC   #HI DBUFRADDR
+               JSR   AOUT
+               LDA   ADDR
+               STA   PRLLDA1+1
+               STA   PRLLDA2+1
+               JSR   AOUT
+               LDA   #":"|0x80
+               JSR   COUT
+               LDX   #0         ; output byte values
+PRLLDA1        LDA   $FFFF,X
+               JSR   AOUT
+               TXA
+               LSR   A
+               BCC   PRLSK1
+               LSR   A
+               BCC   PRLSK1
+               LDA   #$A0
+               JSR   COUT
+PRLSK1         INX
+               CPX   #$10
+               BNE   PRLLDA1
+               LDA   #$A0       ; print two spaces
+               JSR   COUT
+               LDA   #$A0
+               JSR   COUT
+               LDX   #0         ; output characters
+PRLLDA2        LDA   $FFFF,X
+               JSR   COUT
+               INX
+               CPX   #$10
+               BNE   PRLLDA2
+               RTS
+
+
+
+DSPTITLE                        ; display title
+                                ; i: none
+                                ; o: title displayed
+                                ;         VTAB destroyed
+
+               LDA   #0
+               STA   VTAB
+               JSR   BASCALC
+               LDY   #0
+               LDA   #$7F
+               STA   INVMASK
+               JSR   PRMESS
+               DB              "                                  "
+               DB              "B l o X a p"
+               DB              "                                   "
+               DB    0
+               LDA   #$FF
+               STA   INVMASK
+               RTS
+
+
+
+DSPOFS                          ; display offset addresses at top of page
+                                ; i: none
+                                ; o: hex numbers printed
+                                ;         VTAB destroyed
+
+               LDA   #3
+               STA   VTAB
+               JSR   BASCALC
+               LDY   #5
+               JSR   PRMESS
+               DB              "00010203 04050607 08090A0B 0C0D0E0F"
+               DB              "   "
+               DB              "0123456789ABCDEF"
+               DB    0
+               RTS
+
+
+
+DSPSTMES                        ; display status messages
+                                ; i: none
+                                ; o: messages displayed
+
+               LDA   #21
+               STA   VTAB
+               JSR   BASCALC
+               LDY   #0
+               JSR   PRMESS
+               DB              "slot/drive:  /"
+               DB    0
+               LDY   #12
+               LDA   UNIT       ; dsss0000 .
+               ASL   A              ; sss00000 d
+               ASL   A              ; ss000000 s
+               ROL   A              ; s000000s s
+               ROL   A              ; 000000ss s
+               ROL   A              ; 00000sss 0
+               ORA   #$B0       ; 10110sss (ASCII)
+               JSR   COUT
+               INY
+               LDA   UNIT       ; dsss0000
+               BMI   DSSK1
+               LDA   #$B1       ; 10110001 (ASCII) d = 0 (drive 1)
+               BNE   DSSK2
+DSSK1          LDA   #$B2       ; 10110010 (ASCII) d = 1 (drive 2)
+DSSK2          JSR   COUT
+               INC   VTAB
+               JSR   BASCALC
+               LDY   #5
+               JSR   PRMESS
+               DB              "block: $"
+               DB    0
+               LDY   #13
+               LDA   BLOCK+1
+               JSR   AOUT
+               LDA   BLOCK
+               JSR   AOUT
+               RTS
+
+
+
+DSPHELP                         ; display the "H" help command indicator
+                                ; i: none
+                                ; o: message printed
+                                ;         VTAB preserved
+
+               LDA   VTAB
+               PHA
+               JSR   CLRHELP
+               LDA   #21
+               STA   VTAB
+               JSR   BASCALC
+               LDY   #43
+               JSR   PRMESS
+               DB              "Press H for help."
+               DB    0
+               PLA
+               STA   VTAB
+               RTS
+
+
+
+CLRHELP                         ; clear help command indicator
+                                ; i: none
+                                ; o: message cleared
+                                ;         VTAB preserved
+
+               LDA   VTAB
+               PHA
+               LDA   #21
+               STA   VTAB
+DHLP2          JSR   BASCALC
+               LDY   #43
+DHLP1          LDA   #$A0
+               JSR   COUT
+               CPY   #80
+               BNE   DHLP1
+               INC   VTAB
+               LDA   VTAB
+               CMP   #24
+               BNE   DHLP2
+               PLA
+               STA   VTAB
+               RTS
+
+
+
+DSPINS                          ; display the block of instructions
+                                ; i: CURBAS, CURY
+                                ; o: instructions displayed
+                                ;         ADDR, BAS destroyed
+                                ;         VTAB preserved
+
+               LDA   VTAB
+               PHA
+               CLC
+               LDA   CURBAS
+               ADC   CURY
+               STA   ADDR
+               LDA   CURBAS+1
+               ADC   #0
+               STA   ADDR+1
+               LDY   #62
+               LDA   #4
+               STA   VTAB
+PISLP1         JSR   BASCALC
+               JSR   PRINS
+               INC   VTAB
+               LDA   ADDR+1
+               CMP   #HI DBUFRADDR+$0200
+               BEQ   PISSK1
+               LDA   VTAB
+               CMP   #20
+               BNE   PISLP1
+               BEQ   EXPIS
+PISSK1         JSR   CLRINS
+EXPIS          PLA
+               STA   VTAB
+               RTS
+
+
+
+PRINS                           ; print one instruction (ROM)
+                                ; i: ADDR: address of op code
+                                ;         BAS : base address
+                                ;         Y   : HTAB (0 org)
+                                ; o: one instruction printed
+                                ;         ADDR: incremented to first byte
+                                ;               following the instruction
+                                ;         BAS preserved
+                                ;         Y preserved
+
+               PHY
+               SEC
+               LDA   ADDR+1     ; print address: "hilo:"
+               SBC   #HI DBUFRADDR
+               JSR   AOUT
+               LDA   ADDR
+               JSR   AOUT
+               LDA   #":"|0x80
+               JSR   COUT
+               PHY
+               LDX   #0
+               LDA   (ADDR,X)   ; get opcode
+               TAY              ; save opcode
+               LSR   A
+               BCC   PISK1
+               ROR   A
+               BCS   PIER
+               AND   #$87       ; 10000111
+PISK1          LSR   A
+               TAX
+               LDA   FMT1,X
+               BCC   PISK2
+               LSR   A
+               LSR   A
+               LSR   A
+               LSR   A
+PISK2          AND   #$0F       ; ....1111
+               BNE   PISK3
+PIER           LDY   #$FC
+               LDA   #0
+PISK3          TAX
+               LDA   FMT2,X
+               STA   BYTES
+               AND   #$03       ; ......11
+               STA   BYTES+1
+               STA   ASTO
+               TYA
+               LDX   #$16
+PILP1          CMP   OPTBL,X
+               BEQ   PISK4
+               DEX
+               BPL   PILP1
+               BMI   PISK5
+PISK4          LDA   INDEX,X
+               LDY   #0
+PISK5          BEQ   PISK6
+               AND   #$8F       ; 1...1111
+               TAX
+               TYA
+               LDY   #3
+               CPX   #$8A
+               BEQ   PISK7
+PILP3          LSR   A
+               BCC   PISK7
+               LSR   A
+PILP2          LSR   A
+               ORA   #$20
+               DEY
+               BNE   PILP2
+               INY
+PISK7          DEY
+               BNE   PILP3
+PISK6          LDX   #3
+               TAY
+               LDA   MNEML,Y
+               STA   BYTES+2
+               LDA   MNEMR,Y
+               STA   BYTES+3
+PILP4          LDA   #0
+               LDY   #5
+PILP5          ASL   BYTES+3
+               ROL   BYTES+2
+               ROL   A
+               DEY
+               BNE   PILP5
+               ADC   #$BF
+               PLY
+               JSR   COUT
+               PHY
+               DEX
+               BNE   PILP4
+               PLY
+               INY
+               PHY
+               LDX   #6
+PILP6          CPX   #3
+               BEQ   PISK9
+PILP7          ASL   BYTES
+               BCC   PISK8
+               PLY
+               LDA   CHAR1-1,X
+               JSR   COUT
+               LDA   CHAR2-1,X
+               BEQ   PISK8A
+               JSR   COUT
+PISK8A         PHY
+PISK8          DEX
+               BNE   PILP6
+               PLY
+               JMP   PISK13
+PILP8          DEC   BYTES+1
+               BMI   PILP7
+               PLY
+               JSR   AOUT
+               PHY
+PISK9          LDY   BYTES+1
+               LDA   BYTES
+               CMP   #$E8
+               LDA   (ADDR),Y
+               BCC   PILP8
+               LDY   ADDR+1
+               TAX
+               BPL   PISK10
+               DEY
+PISK10         ADC   ADDR
+               BCC   PISK11
+               INY
+PISK11         TAX
+               INX
+               BNE   PISK12
+               INY
+PISK12         SEC
+               TYA
+               SBC   #HI DBUFRADDR
+               PLY
+               JSR   AOUT
+               TXA
+               JSR   AOUT
+PILP9          LDA   #$A0
+               JSR   COUT
+PISK13         CPY   #80
+               BNE   PILP9
+               INC   ASTO
+               CLC
+               LDA   ADDR
+               ADC   ASTO
+               STA   ADDR
+               LDA   ADDR+1
+               ADC   #0
+               STA   ADDR+1
+               PLY
+               RTS
+
+
+
+CLRINS                          ; clear instruction block (below VTAB)
+                                ; i: VTAB: line to clear down from
+                                ; o: lines cleared (col. 62-79)
+
+               LDA   VTAB
+               CMP   #20
+               BEQ   EXCI
+               JSR   BASCALC
+               LDY   #62
+CILP1          LDA   #$A0
+               JSR   COUT
+               CPY   #80
+               BNE   CILP1
+               INC   VTAB
+               JMP   CLRINS
+EXCI           RTS
+
+
+
+CUROUT                          ; output cursor
+                                ; i: CURBAS: base byte address
+                                ;         CURY:   offset byte in line
+                                ;         VTAB:   line number
+                                ; o: inverse cursor printed
+                                ;         CURBAS, CURY, VTAB preserved
+
+               LDA   VTAB
+               PHA
+               JSR   BASCALC    ; calculate BAS from VTAB
+               LDY   #0
+               SEC
+               LDA   CURBAS+1
+               SBC   #HI DBUFRADDR
+               JSR   AINVOUT
+               LDA   CURBAS
+               JSR   AINVOUT
+               LDA   CURY       ; calculate Y for AINVOUT (in A) and push
+               TAY
+               LSR   A
+               LSR   A
+               STA   ASTO
+               TYA
+               ASL   A
+               ADC   #5
+               ADC   ASTO
+               PHA
+               LDA   (CURBAS),Y ; get byte and push (first pl/ph Y for AINVOUT)
+               PLY
+               PHY
+               PHA
+               JSR   AINVOUT    ; output inverse byte value
+               CLC              ; calculate Y for CINVOUT
+               LDA   #43
+               ADC   CURY
+               TAY
+               PLA              ; get byte
+               JSR   CINVOUT    ; output inverse character
+               LDA   #3
+               STA   VTAB
+               JSR   BASCALC
+               PLY        ; get Y for AINVOUT from before
+               LDA   CURY
+               JSR   AINVOUT
+               CLC              ; calculate Y for NIBOUT
+               LDA   #43
+               ADC   CURY
+               TAY
+               LDA   #$7F
+               STA   INVMASK
+               LDA   CURY
+               JSR   NIBOUT
+               LDA   #$FF
+               STA   INVMASK
+               PLA
+               STA   VTAB
+               RTS
+
+
+
+CUROFF                          ; turn off cursor
+                                ; i: CURBAS: base byte address
+                                ;         CURY:   offset byte in line
+                                ;         VTAB:   line number
+                                ; o: inverse cursor removed
+                                ;         CURBAS, CURY, VTAB preserved
+
+               LDA   VTAB
+               PHA
+               JSR   BASCALC    ; calculate BAS from VTAB
+               LDY   #0
+               SEC
+               LDA   CURBAS+1
+               SBC   #HI DBUFRADDR
+               JSR   AOUT
+               LDA   CURBAS
+               JSR   AOUT
+               LDA   CURY       ; calculate Y for AOUT (in A) and push
+               TAY
+               LSR   A
+               LSR   A
+               STA   ASTO
+               TYA
+               ASL   A
+               ADC   #5
+               ADC   ASTO
+               PHA
+               LDA   (CURBAS),Y ; get byte and push (first pl/ph Y for AOUT)
+               PLY
+               PHY
+               PHA
+               JSR   AOUT       ; turn off inverse byte value
+               CLC              ; calculate Y for CINVOUT
+               LDA   #43
+               ADC   CURY
+               TAY
+               PLA              ; get byte
+               JSR   COUT       ; turn off inverse character
+               LDA   #3
+               STA   VTAB
+               JSR   BASCALC
+               PLY        ; get Y for AOUT from before
+               LDA   CURY
+               JSR   AOUT
+               CLC              ; calculate Y for NIBOUT
+               LDA   #43
+               ADC   CURY
+               TAY
+               LDA   CURY
+               JSR   NIBOUT
+               PLA
+               STA   VTAB
+               RTS
+
+
+
+SCROLLUP                        ; scroll monitor window up
+                                ; i: none
+                                ; o: window is scrolled up
+                                ;         (bottom line not cleared)
+                                ;         VTAB := 19
+
+               STA   PAGE2
+SULP1          LDY   #29
+SULP2          LDA   $0680,Y
+               STA   $0600,Y
+               LDA   $0700,Y
+               STA   $0680,Y
+               LDA   $0780,Y
+               STA   $0700,Y
+               LDA   $0428,Y
+               STA   $0780,Y
+               LDA   $04A8,Y
+               STA   $0428,Y
+               LDA   $0528,Y
+               STA   $04A8,Y
+               LDA   $05A8,Y
+               STA   $0528,Y
+               LDA   $0628,Y
+               STA   $05A8,Y
+               LDA   $06A8,Y
+               STA   $0628,Y
+               LDA   $0728,Y
+               STA   $06A8,Y
+               LDA   $07A8,Y
+               STA   $0728,Y
+               LDA   $0450,Y
+               STA   $07A8,Y
+               LDA   $04D0,Y
+               STA   $0450,Y
+               LDA   $0550,Y
+               STA   $04D0,Y
+               LDA   $05D0,Y
+               STA   $0550,Y
+               DEY
+               BPL   SULP2
+               LDA   PAGE2?
+               BPL   EXSU
+               STA   PAGE1
+               BMI   SULP1
+EXSU           LDA   #19
+               STA   VTAB
+               RTS
+
+
+
+SCROLLDW                        ; scroll monitor window down
+                                ; i: none
+                                ; o: window is scrolled down
+                                ;         (top line not cleared)
+                                ;         VTAB := 4
+
+               STA   PAGE2
+SDLP1          LDY   #29
+SDLP2          LDA   $0550,Y
+               STA   $05D0,Y
+               LDA   $04D0,Y
+               STA   $0550,Y
+               LDA   $0450,Y
+               STA   $04D0,Y
+               LDA   $07A8,Y
+               STA   $0450,Y
+               LDA   $0728,Y
+               STA   $07A8,Y
+               LDA   $06A8,Y
+               STA   $0728,Y
+               LDA   $0628,Y
+               STA   $06A8,Y
+               LDA   $05A8,Y
+               STA   $0628,Y
+               LDA   $0528,Y
+               STA   $05A8,Y
+               LDA   $04A8,Y
+               STA   $0528,Y
+               LDA   $0428,Y
+               STA   $04A8,Y
+               LDA   $0780,Y
+               STA   $0428,Y
+               LDA   $0700,Y
+               STA   $0780,Y
+               LDA   $0680,Y
+               STA   $0700,Y
+               LDA   $0600,Y
+               STA   $0680,Y
+               DEY
+               BPL   SDLP2
+               LDA   PAGE2?
+               BPL   EXSD
+               STA   PAGE1
+               BMI   SDLP1
+EXSD           LDA   #4
+               STA   VTAB
+               RTS
+
+
+
+GETBLOCK                        ; input block number
+                                ; i: none
+                                ; o: BLOCK
+                                ;         ProDOS error message cleared
+                                ;         VTAB destroyed
+
+               LDA   #22
+               STA   VTAB
+               JSR   BASCALC
+               LDY   #13
+               LDA   BLOCK+1
+               JSR   AINVOUT
+GBLP2          JSR   FETCH
+               LDX   #$0F
+GBLP1          CMP   CMDTBL,X
+               BEQ   GBSK2      ; if nibble, branch
+               DEX
+               BPL   GBLP1
+               CMP   #$8D       ; <return>
+               BNE   GBLP2
+               LDA   BLOCK+1
+               JMP   GBSK1
+GBSK2          TXA
+               ASL   A
+               ASL   A
+               ASL   A
+               ASL   A
+               STA   ASTO
+               DEY
+               DEY
+               JSR   AINVOUT
+GBLP4          JSR   FETCH
+               LDX   #$0F
+GBLP3          CMP   CMDTBL,X
+               BEQ   GBSK3
+               DEX
+               BPL   GBLP3
+               JMP   GBLP4
+GBSK3          TXA
+               ORA   ASTO
+               DEY
+               DEY
+               STA   BLOCK+1
+               JSR   AOUT
+               LDA   BLOCK
+               JSR   AINVOUT
+GBLP6          JSR   FETCH
+               LDX   #$0F
+GBLP5          CMP   CMDTBL,X
+               BEQ   GBSK4      ; if nibble, branch
+               DEX
+               BPL   GBLP5
+               JMP   GBLP6
+GBSK4          TXA
+               ASL   A
+               ASL   A
+               ASL   A
+               ASL   A
+               STA   ASTO
+               DEY
+               DEY
+               JSR   AINVOUT
+GBLP8          JSR   FETCH
+               LDX   #$0F
+GBLP7          CMP   CMDTBL,X
+               BEQ   GBSK5
+               DEX
+               BPL   GBLP7
+               JMP   GBLP8
+GBSK5          TXA
+               ORA   ASTO
+               STA   BLOCK
+GBSK1          DEY
+               DEY
+               JSR   AOUT
+               JSR   CLRERR
+               RTS
+
+
+
+ERROR                           ; print ProDOS error message
+                                ; i: A: error number
+                                ; o: message printed
+                                ;         VTAB preserved
+                                ;         ASTO destroyed
+
+               STA   ASTO
+               LDA   VTAB
+               PHA
+               LDA   #21
+               STA   VTAB
+               JSR   BASCALC
+               LDY   #19
+               LDA   ASTO
+               CMP   #ERRNODEV
+               BNE   .A
+               JSR   PRMESS
+               DB              "(no device connected)"
+               DB    0
+               BRA   .EXIT
+.A             CMP   #ERRWP
+               BNE   .B
+               JSR   PRMESS
+               DB              "(write protected)"
+               DB    0
+               BRA   .EXIT
+.B             JSR   PRMESS
+               DB              "(input/output error)"
+               DB    0
+.EXIT          PLA
+               STA   VTAB
+               RTS
+
+
+
+CLRERR                          ; clear ProDOS error message
+                                ; i: none
+                                ; o: message cleared
+                                ;         VTAB destroyed
+
+               LDA   #21
+               STA   VTAB
+               JSR   BASCALC
+               LDY   #19
+CELP1          LDA   #$A0
+               JSR   COUT
+               CPY   #42
+               BNE   CELP1
+               RTS
+
+
+
+HOME                            ; clear entire screen
+                                ; i: none
+                                ; o: screen cleared
+                                ;         VTAB destroyed
+
+               LDA   #0
+               STA   VTAB
+               LDX   #23
+               BEQ   CLRDOWN
+
+
+
+TLSTHOME                        ; clear screen except for title and status mess.
+                                ; i: none
+                                ; o: lines 3-19
+
+               LDA   #1
+               STA   VTAB
+               LDX   #19
+               BNE   CLRDOWN
+
+
+
+TLHOME                          ; clear screen except for title
+                                ; i: none
+                                ; o: lines 1-23 cleared
+                                ;         VTAB destroyed
+
+               LDA   #1
+               STA   VTAB
+               LDX   #23
+                                ; fall through to clear down
+
+
+
+CLRDOWN                         ; clear screen down
+                                ; i: VTAB: line to clear down from
+                                ;          X: bottom-most line to clear
+                                ; o: screen cleared
+
+               JSR   BASCALC
+               LDA   BAS
+               STA   HMSTA1+1
+               STA   HMSTA2+1
+               LDA   BAS+1
+               STA   HMSTA1+2
+               STA   HMSTA2+2
+               LDA   #$A0
+               STA   PAGE2
+               LDY   #0
+HMSTA1         STA   $FFFF,Y
+               INY
+               CPY   #40
+               BNE   HMSTA1
+               STA   PAGE1
+               LDY   #0
+HMSTA2         STA   $FFFF,Y
+               INY
+               CPY   #40
+               BNE   HMSTA2
+               INC   VTAB
+               CPX   VTAB
+               BCS   CLRDOWN
+               RTS
+
+
+
+GETHEX                          ; get hex nibble
+                                ; i: none
+                                ; o: A: hex nibble ($00 - $0F)
+                                ;            $10 = <return>
+                                ;         X destroyed
+
+               JSR   FETCH
+               LDX   #$10
+               CMP   #$8D       ; <return>
+               BEQ   GHSK1
+               DEX
+GHLP1          CMP   CMDTBL,X
+               BEQ   GHSK1      ; if nibble, branch
+               DEX
+               BPL   GHLP1
+               BMI   GETHEX
+GHSK1          TXA
+               RTS
+
+
+
+PRMESS                          ; print message
+                                ; i: message following JSR PRMESS
+                                ;            terminated with $00
+                                ;         BAS: base address
+                                ;         Y:   HTAB (0 org)
+                                ; o: message printed
+                                ;         BAS preserved
+                                ;         Y destroyed
+                                ;         A destroyed
+
+               PLA
+               STA   PMLDA+1
+               PLA
+               STA   PMLDA+2
+               LDX   #1
+PMLDA          LDA   $FFFF,X
+               BEQ   PMSK1
+               JSR   COUT
+               INX
+               BNE   PMLDA
+PMSK1          CLC
+               TXA
+               ADC   PMLDA+1
+               TAY
+               LDA   #0
+               ADC   PMLDA+2
+               PHA
+               PHY
+               RTS
+
+
+
+CINVOUT                         ; output A to screen (character) inversed
+                                ; input, output same as COUT
+
+               PHA
+               LDA   #$7F       ; 01111111 = inverse
+               STA   INVMASK
+               PLA
+               JSR   COUT
+               LDA   #$FF       ; 11111111 = normal
+               STA   INVMASK
+               RTS
+
+
+
+COUT                            ; output A register to screen (character)
+                                ; i: A  : value to be printed
+                                ;         BAS: base address
+                                ;         Y  : HTAB (0 org)
+                                ; o: A destroyed
+                                ;         BAS preserved
+                                ;         Y incremented
+                                ;         one character printed on the screen
+
+               PHY
+               PHA
+               TYA
+               LSR   A
+               BCC   COSK2
+               STA   PAGE1
+               BCS   COSK3
+COSK2          STA   PAGE2
+COSK3          TAY
+               PLA
+               ORA   #$80       ; 10000000
+               AND   INVMASK    ; i1111111 where i = 0:inverse, i = 1:normal
+               PHA
+               AND   #$60       ; 01100000
+               CMP   #$40       ; .10.....
+               BNE   COSK1
+               PLA
+               AND   #$BF       ; 10111111
+               DB    $89        ; BIT to absorb PLA
+COSK1          PLA
+               STA   (BAS),Y
+               PLY
+               INY
+               RTS
+
+
+
+AINVOUT                         ; output A register to screen (value) inversed
+                                ; input, output same as AOUT
+
+               PHA
+               LDA   #$7F       ; 01111111 = inverse
+               STA   INVMASK
+               PLA
+               JSR   AOUT
+               LDA   #$FF       ; 11111111 = normal
+               STA   INVMASK
+               RTS
+
+
+
+AOUT                            ; output A register to screen (value)
+                                ; i: A  : value to be printed
+                                ;         BAS: base address
+                                ;         Y  : HTAB (0 org)
+                                ; o: A destroyed
+                                ;         BAS preserved
+                                ;         Y incremented by 2
+                                ;         two characters printed on the screen
+
+               PHA
+               LSR   A
+               LSR   A
+               LSR   A
+               LSR   A
+               JSR   NIBOUT
+               PLA
+NIBOUT         PHY
+               PHA
+               TYA
+               LSR   A
+               BCC   AOSK2
+               STA   PAGE1
+               BCS   AOSK3
+AOSK2          STA   PAGE2
+AOSK3          TAY
+               PLA
+               AND   #$0F       ; 00001111
+               ORA   #"0"|0x80  ; 10110000
+               CMP   #("9"+1)|0x80 ; see if A - F
+               AND   INVMASK    ; i1111111 where i = 0:inverse, i = 1:normal
+               BCC   AOSK1
+               ADC   #$06       ; add 7
+               AND   #$BF       ; 10111111
+AOSK1          STA   (BAS),Y
+               PLY
+               INY
+               RTS
+
+
+
+MOUT                            ; output A register to screen (mouse character)
+                                ; i: A  : mouse character to be printed
+                                ;         BAS: base address
+                                ;         Y  : HTAB (0 org)
+                                ; o: A destroyed
+                                ;         BAS preserved
+                                ;         Y incremented
+                                ;         one character printed on the screen
+
+               PHY
+               PHA
+               TYA
+               LSR   A
+               BCC   MOSK2
+               STA   PAGE1
+               BCS   MOSK3
+MOSK2          STA   PAGE2
+MOSK3          TAY
+               PLA
+               AND   #$5F
+               ORA   #$40
+               STA   (BAS),Y
+               PLY
+               INY
+               RTS
+
+
+
+BASCALC                         ; text screen base address calculator (ROM)
+                                ; i: VTAB: line number (0 org)
+                                ; o: BAS:  base address (lo hi)
+
+               LDA   VTAB
+               LSR   A
+               AND   #3
+               ORA   #4
+               STA   BAS+1
+               LDA   VTAB
+               AND   #$18
+               BCC   BCS1
+               ADC   #$7F
+BCS1           STA   BAS
+               ASL   A
+               ASL   A
+               ORA   BAS
+               STA   BAS
+               RTS
+
+
+
+FETCH                           ; fetch a command (uppercase)
+                                ; i: none
+                                ; o: A: key pressed (A >= $80)
+
+               JSR   WAITKEY
+               CMP   #"a"|0x80
+               BCC   EXFET
+               CMP   #("z"+1)|0x80
+               BCS   EXFET
+               AND   #$DF       ; 11011111  capitalize a-z
+EXFET          RTS
+
+
+
+WAITKEY                         ; wait for a keypress
+                                ; i: none
+                                ; o: A:character (A >= $80)
+                                ;         strobe cleared
+
+               STA   CLEARKBD
+WKLP1          LDA   READKBD
+               BPL   WKLP1
+               STA   CLEARKBD
+               RTS
+
+
+
+EXECUTE                         ; execute a command
+                                ; i: A: keypress (A >= $80)
+                                ; o: command executed
+
+               STA   ASTO
+               LDX   #0
+SRCHTBL        LDA   CMDTBL,X
+               BEQ   NOTFND
+               CMP   ASTO
+               BEQ   FND
+               INX
+               BNE   SRCHTBL
+NOTFND         RTS
+FND            TXA
+               ASL   A
+               TAX
+               JMP   (JMPTBL,X)
+
+
+
+HEX                             ; input a hexadecimal byte value
+                                ; i: X: from EXECUTE routine
+                                ;         CURBAS, CURY, VTAB
+                                ; o: two characters read; value stored in
+                                ;         memory; if second digit is invalid,
+                                ;         then original value is restored, and
+                                ;         value is executed as a command
+
+               LDY   CURY
+               LDA   (CURBAS),Y
+               PHA              ; store old value
+               TXA
+               LSR   A              ; hex are first in CMDTBL
+               STA   (CURBAS),Y
+               PHA              ; store new most-significant nibble
+               JSR   CUROUT
+               JSR   FETCH      ; get next nibble (or command)
+               LDY   CURY
+               LDX   #$0F
+HXLP1          CMP   CMDTBL,X
+               BEQ   HXSK1      ; if nibble, branch
+               DEX
+               BPL   HXLP1
+               TAX              ; if command, restore old value and execute
+               PLA              ; forget most-significant nibble
+               PLA
+               STA   (CURBAS),Y
+               TXA
+               JMP   EXECUTE
+HXSK1          STX   ASTO
+               PLA              ; get most-significant nibble
+               ASL   A
+               ASL   A
+               ASL   A
+               ASL   A
+               ORA   ASTO
+               STA   (CURBAS),Y
+               PLA              ; ignore old value
+               JMP   RIGHT
+
+
+
+UP                              ; move cursor up
+               JSR   CUROFF
+UPINTERN       LDA   VTAB
+               CMP   #9
+               BCS   UPSK1
+               LDA   CURBAS+1
+               CMP   #HI DBUFRADDR
+               BNE   UPSK2
+               LDA   CURBAS
+               BEQ   EXUP
+               CMP   #$50
+               BCC   UPSK1
+UPSK2          JSR   SCROLLDW
+               JSR   UPSUB
+               SEC
+               LDA   CURBAS
+               SBC   #$40
+               STA   ADDR
+               LDA   CURBAS+1
+               SBC   #0
+               STA   ADDR+1
+               JSR   PRLINE
+               LDA   #8
+               STA   VTAB
+EXUP           RTS
+UPSK1          DEC   VTAB
+UPSUB          SEC
+               LDA   CURBAS
+               SBC   #$10
+               STA   CURBAS
+               LDA   CURBAS+1
+               SBC   #0
+               STA   CURBAS+1
+               RTS
+
+
+
+DOWN                            ; move cursor down
+               JSR   CUROFF
+DWINTERN       LDA   VTAB
+               CMP   #15
+               BCC   DWSK1
+               LDA   CURBAS+1
+               CMP   #HI DBUFRADDR+$0100
+               BNE   DWSK2
+               LDA   CURBAS
+               CMP   #$F0
+               BEQ   EXDW
+               CMP   #$B0
+               BCS   DWSK1
+DWSK2          JSR   SCROLLUP
+               JSR   DWSUB
+               CLC
+               LDA   CURBAS
+               ADC   #$40
+               STA   ADDR
+               LDA   CURBAS+1
+               ADC   #0
+               STA   ADDR+1
+               JSR   PRLINE
+               LDA   #15
+               STA   VTAB
+EXDW           RTS
+DWSK1          INC   VTAB
+DWSUB          CLC
+               LDA   CURBAS
+               ADC   #$10
+               STA   CURBAS
+               LDA   CURBAS+1
+               ADC   #0
+               STA   CURBAS+1
+               RTS
+
+
+
+LEFT                            ; move cursor left
+               JSR   CUROFF
+               LDA   CURY
+               BNE   LFSK1
+               LDA   VTAB
+               CMP   #4
+               BEQ   EXLF
+               LDA   #$0F
+               STA   CURY
+               JMP   UPINTERN
+LFSK1          DEC   CURY
+EXLF           RTS
+
+
+
+RIGHT                           ; move cursor right
+               JSR   CUROFF
+               LDA   CURY
+               CMP   #$0F
+               BNE   RTSK1
+               LDA   VTAB
+               CMP   #19
+               BEQ   EXRT
+               LDA   #0
+               STA   CURY
+               JMP   DWINTERN
+RTSK1          INC   CURY
+EXRT           RTS
+
+
+
+BEGINBLOC                       ; move to beginning of block
+               JSR   CUROFF
+               LDA   #$00
+               STA   CURBAS
+               LDA   #HI DBUFRADDR
+               STA   CURBAS+1
+               JSR   PRPAGE
+               LDA   #4
+               STA   VTAB
+               LDY   #0
+               STY   CURY
+               RTS
+
+
+
+ENDBLOC                         ; move to end of block
+               JSR   CUROFF
+               LDA   #$00
+               STA   CURBAS
+               LDA   #HI DBUFRADDR+$0100
+               STA   CURBAS+1
+               JSR   PRPAGE
+               LDA   #$F0
+               STA   CURBAS
+               LDA   #19
+               STA   VTAB
+               LDY   #$0F
+               STY   CURY
+               RTS
+
+
+
+READ                            ; read
+
+               JSR   CUROFF
+               JSR   CLRHELP
+               LDA   VTAB
+               PHA
+               JSR   GETBLOCK   ; get block number
+               PLA
+               STA   VTAB
+RDINTERN       JSR   MLI
+               DB    READ_BLOCK
+               DW    PARMLIST
+               BCC   RDSK1
+               JSR   ERROR
+               JSR   ZEROBUFR
+RDSK1          LDA   CURBAS     ; i: VTAB, CURBAS
+               PHA              ; o: print page of bytes
+               LDA   CURBAS+1
+               PHA
+               LDA   VTAB
+               PHA
+               SEC
+               SBC   #4
+               ASL   A
+               ASL   A
+               ASL   A
+               ASL   A
+               STA   ASTO
+               SEC
+               LDA   CURBAS
+               SBC   ASTO
+               STA   CURBAS
+               LDA   CURBAS+1
+               SBC   #0
+               STA   CURBAS+1
+               JSR   PRPAGE
+               PLA
+               STA   VTAB
+               PLA
+               STA   CURBAS+1
+               PLA
+               STA   CURBAS
+               RTS
+
+
+
+WRITE                           ; write
+
+               JSR   CUROFF
+               JSR   CLRHELP
+               LDA   VTAB
+               PHA
+               JSR   GETBLOCK   ; get block number
+               PLA
+               STA   VTAB
+               JSR   MLI
+               DB    WRITE_BLOCK
+               DW    PARMLIST
+               BCC   EXWR
+               JSR   ERROR
+EXWR           RTS
+
+
+
+TEXT                            ; text entry
+
+               LDA   VTAB
+               PHA
+               JSR   CLRHELP
+               LDA   #21
+               STA   VTAB
+               JSR   BASCALC
+               LDY   #43
+               JSR   PRMESS
+               DB              "Text entry mode."
+               DB    0
+               INC   VTAB
+               JSR   BASCALC
+               LDY   #46
+               JSR   PRMESS
+               DB              "<control>-A    toggle ascii: high"
+               DB    0
+               INC   VTAB
+               JSR   BASCALC
+               LDY   #46
+               JSR   PRMESS
+               DB              "<return>       exit text mode"
+               DB    0
+               LDA   #4
+               STA   VTAB
+               JSR   CLRINS
+               PLA
+               STA   VTAB
+               LDA   #$FF
+               STA   TXSKTX+1
+TXLP1          JSR   CUROUT
+               JSR   WAITKEY
+               CMP   #$FF       ; <delete>
+               BEQ   TXSKLF
+               CMP   #$A0       ; text
+               BCS   TXSKTX
+               CMP   #$8B       ; <up arrow>
+               BEQ   TXSKUP
+               CMP   #$8A       ; <down arrow>
+               BEQ   TXSKDW
+               CMP   #$88       ; <left arrow>
+               BEQ   TXSKLF
+               CMP   #$95       ; <right arrow>
+               BEQ   TXSKRT
+               CMP   #$8D       ; <return>
+               BEQ   EXTX
+               CMP   #$9B       ; <esc>
+               BEQ   EXTX
+               CMP   #$81       ; <control>-A
+               BEQ   TXSKAS
+               BNE   TXLP1
+TXSKTX         AND   #$FF       ; mod by TXSKAS: $7F: low ASC.; $FF: high ASC.
+               LDY   CURY
+               STA   (CURBAS),Y
+               JSR   RIGHT
+               BRA   TXLP1
+TXSKUP         JSR   UP
+               BRA   TXLP1
+TXSKDW         JSR   DOWN
+               BRA   TXLP1
+TXSKLF         JSR   LEFT
+               BRA   TXLP1
+TXSKRT         JSR   RIGHT
+               BRA   TXLP1
+TXSKAS         LDA   VTAB
+               PHA
+               LDA   #22
+               STA   VTAB
+               JSR   BASCALC
+               LDY   #75
+               LDA   TXSKTX+1   ; AND mask for high/low ASCII
+               BPL   TXSK1
+               JSR   PRMESS
+               DB              "low "
+               DB    0
+               LDA   #$7F
+               BNE   TXSK2
+TXSK1          JSR   PRMESS
+               DB              "high"
+               DB    0
+               LDA   #$FF
+TXSK2          STA   TXSKTX+1
+               PLA
+               STA   VTAB
+               BRA   TXLP1
+EXTX
+               RTS
+
+
+
+SLOT                            ; change slot/drive
+
+               JSR   CUROFF
+               JSR   CLRHELP
+               LDA   VTAB
+               PHA
+               LDA   #21
+               STA   VTAB
+               JSR   BASCALC
+               LDY   #12
+               LDA   UNIT       ; dsss0000 .
+               ASL   A              ; sss00000 d
+               ASL   A              ; ss000000 s
+               ROL   A              ; s000000s s
+               ROL   A              ; 000000ss s
+               ROL   A              ; 00000sss 0
+               ORA   #$B0       ; 10110sss (ASCII)
+               STA   ASTO
+               JSR   CINVOUT
+SLLP1          JSR   WAITKEY
+               CMP   #$8D       ; <return>
+               BEQ   EXSL
+               CMP   #"1"|0x80
+               BCC   SLLP1
+               CMP   #("7"+1)|0x80
+               BCS   SLLP1
+               STA   ASTO       ; 10110sss (ASCII)
+               ASL   A              ; 0110sss0
+               ASL   A              ; 110sss00
+               ASL   A              ; 10sss000
+               ASL   A              ; 0sss0000
+               ASL   A              ; sss00000
+               ASL   UNIT       ; sss00000 d sss00000
+               ROR   A          ; dsss0000 0 sss00000
+               STA   UNIT
+EXSL           LDA   ASTO
+               DEY
+               JSR   COUT
+               LDA   UNIT       ; dsss0000
+               BMI   SLSK1
+               LDA   #$B1       ; 10110001 (ASCII) d = 0 (drive 1)
+               BNE   SLSK2
+SLSK1          LDA   #$B2       ; 10110010 (ASCII) d = 1 (drive 2)
+SLSK2          INY
+               STA   ASTO       ; 101100dD (ASCII)
+               JSR   CINVOUT
+DRLP1          JSR   WAITKEY
+               CMP   #$8D       ; <return>
+               BEQ   EXDR
+               CMP   #"1"|0x80
+               BCC   DRLP1
+               CMP   #("2"+1)|0x80
+               BCS   DRLP1
+               STA   ASTO       ; 101100dD 0 dsss0000
+               ASL   UNIT       ; 101100dD d sss00000
+               LSR   A              ; 0101100d D sss00000
+               LSR   A              ; 00101100 d sss00000
+               ROR   UNIT       ; 00101100 0 dsss0000
+EXDR           LDA   ASTO
+               DEY
+               JSR   COUT
+               JSR   CLRERR
+               PLA
+               STA   VTAB
+               RTS
+
+
+
+INCBLOCK                        ; increment block number
+
+               JSR   CUROFF
+               INC   BLOCK
+               BNE   IBSK1
+               INC   BLOCK+1
+IBSK1          LDA   VTAB
+               PHA
+               LDA   #22
+               STA   VTAB
+               JSR   BASCALC
+               LDY   #13
+               LDA   BLOCK+1
+               JSR   AOUT
+               LDA   BLOCK
+               JSR   AOUT
+               JSR   CLRERR
+               PLA
+               STA   VTAB
+               JMP   RDINTERN
+
+
+
+DECBLOCK                        ; decrement block number
+
+               JSR   CUROFF
+               DEC   BLOCK
+               LDA   BLOCK
+               CMP   #$FF
+               BNE   DBSK1
+               DEC   BLOCK+1
+DBSK1          JMP   IBSK1
+
+
+
+HELP                            ; help
+
+               LDA   VTAB
+               PHA
+               JSR   TLHOME
+               LDA   #3         ; VTAB 3
+               STA   VTAB
+               JSR   BASCALC
+               LDY   #0
+               JSR   PRMESS
+               DB              "The following commands are available:"
+               DB    0
+               LDA   #5         ; VTAB 5
+               STA   VTAB
+               JSR   BASCALC
+               LDY   #4
+               JSR   PRMESS
+               DB              "Cursor movement."
+               DB    0
+               LDY   #40
+               JSR   PRMESS
+               DB              "Input/output."
+               DB    0
+               INC   VTAB       ; VTAB 6
+               JSR   BASCALC
+               LDY   #4
+               JSR   PRMESS
+               DB              "I    up"
+               DB    0
+               LDY   #6
+               LDA   #"K"|0x80
+               JSR   MOUT
+               LDY   #40
+               JSR   PRMESS
+               DB              "R        read block"
+               DB    0
+               INC   VTAB       ; VTAB 7
+               JSR   BASCALC
+               LDY   #4
+               JSR   PRMESS
+               DB              "K    down"
+               DB    0
+               LDY   #6
+               LDA   #"J"|0x80
+               JSR   MOUT
+               LDY   #40
+               JSR   PRMESS
+               DB              "W        write block"
+               DB    0
+               INC   VTAB       ; VTAB 8
+               JSR   BASCALC
+               LDY   #4
+               JSR   PRMESS
+               DB              "J    left"
+               DB    0
+               LDY   #6
+               LDA   #"H"|0x80
+               JSR   MOUT
+               LDY   #40
+               JSR   PRMESS
+               DB              "= + . >  read next block"
+               DB    0
+               INC   VTAB       ; VTAB 9
+               JSR   BASCALC
+               LDY   #4
+               JSR   PRMESS
+               DB              "L    right"
+               DB    0
+               LDY   #6
+               LDA   #"U"|0x80
+               JSR   MOUT
+               LDY   #40
+               JSR   PRMESS
+               DB              "- _ , <  read previous block"
+               DB    0
+               INC   VTAB       ; VTAB 10
+               JSR   BASCALC
+               LDY   #4
+               JSR   PRMESS
+               DB              "U    beginning"
+               DB    0
+               LDY   #40
+               JSR   PRMESS
+               DB              "S        change slot/drive"
+               DB    0
+               INC   VTAB       ; VTAB 11
+               JSR   BASCALC
+               LDY   #4
+               JSR   PRMESS
+               DB              "O    end"
+               DB    0
+               LDA   #13        ; VTAB 13
+               STA   VTAB
+               JSR   BASCALC
+               LDY   #4
+               JSR   PRMESS
+               DB              "Editing."
+               DB    0
+               LDY   #40
+               JSR   PRMESS
+               DB              "Other."
+               DB    0
+               INC   VTAB       ; VTAB 14
+               JSR   BASCALC
+               LDY   #4
+               JSR   PRMESS
+               DB              "0-9, A-F  hexadecimal"
+               DB    0
+               LDY   #40
+               JSR   PRMESS
+               DB              "<esc>  exit BloXap"
+               DB    0
+               INC   VTAB       ; VTAB 15
+               JSR   BASCALC
+               LDY   #4
+               JSR   PRMESS
+               DB              "T         text"
+               DB    0
+               LDY   #40
+               JSR   PRMESS
+               DB              "H      display this help screen"
+               DB    0
+               INC   VTAB       ; VTAB 16
+               JSR   BASCALC
+               LDY   #40
+               JSR   PRMESS
+               DB              "?      scan for bytes"
+               DB    0
+               LDA   #23        ; VTAB 23
+               STA   VTAB
+               JSR   BASCALC
+               LDY   #27
+               JSR   PRMESS
+               DB              "Press any key to continue."
+               DB    0
+               JSR   WAITKEY
+               PLA
+               STA   VTAB
+               JMP   WARMUP     ; exit through WARMUP
+
+
+
+SCAN                            ; scan for bytes
+
+               LDA   VTAB
+               PHA
+               JSR   CUROFF
+               JSR   CLRHELP
+               JSR   TLSTHOME
+               LDA   #21
+               STA   VTAB
+               JSR   BASCALC
+               LDY   #43
+               JSR   PRMESS
+               DB              "Scan for specified bytes."
+               DB    0
+               LDA   #4
+               STA   VTAB
+               JSR   BASCALC
+               LDY   #5
+               JSR   PRMESS
+               DB              "Specify <t>ext or <h>exadecimal?"
+               DB    0
+SCLP1          JSR   FETCH
+               CMP   #"T"|0x80
+               BNE   SCSK3
+               JMP   SCSKT
+SCSK3          CMP   #"H"|0x80
+               BNE   SCLP1
+               LDY   #5
+               JSR   PRMESS
+               DB              "Enter hex:                      "
+               DB    0
+               LDA   #6
+               STA   VTAB
+               JSR   BASCALC
+               LDA   #0
+               STA   ASTO
+SCLP6          CLC
+               LDA   ASTO
+               TAY
+               LSR   A
+               LSR   A
+               STA   ASTO
+               TYA
+               ASL   A
+               ADC   #5
+               ADC   ASTO
+               STY   ASTO
+               TAY
+               LDA   #$A0
+               JSR   CINVOUT
+               LDA   #$A0
+               JSR   CINVOUT
+               JSR   GETHEX
+               CMP   #$10       ; <return>
+               BEQ   SCSK1
+               ASL   A
+               ASL   A
+               ASL   A
+               ASL   A
+               LDX   ASTO
+               STA   BYTES,X
+               DEY
+               DEY
+               JSR   AINVOUT
+               JSR   GETHEX
+               LDX   ASTO
+               ORA   BYTES,X
+               STA   BYTES,X
+               DEY
+               DEY
+               PHA
+               JSR   AOUT
+               CLC
+               LDA   #43
+               ADC   ASTO
+               TAY
+               PLA
+               JSR   COUT
+               INC   ASTO
+               LDA   ASTO
+               CMP   #$10
+               BNE   SCLP6
+SCSK7          JMP   FINDBYTES
+SCSK1          DEY
+               DEY
+               LDA   #$A0
+               JSR   COUT
+               LDA   #$A0
+               JSR   COUT
+               BNE   SCSK7
+
+SCSKT
+               LDY   #5
+               JSR   PRMESS
+               DB              "Enter text:                     "
+               DB    0
+               LDA   #6
+               STA   VTAB
+               JSR   BASCALC
+               LDA   #0
+               STA   ASTO
+SCLP7          CLC
+               LDA   ASTO
+               ADC   #43
+               TAY
+               LDA   #$A0
+               JSR   CINVOUT
+               JSR   WAITKEY
+               CMP   #$8D
+               BEQ   SCSK2
+               LDX   ASTO
+               STA   BYTES,X
+               DEY
+               JSR   COUT
+               LDA   ASTO
+               TAX
+               TAY
+               LSR   A
+               LSR   A
+               STA   ASTO
+               TYA
+               ASL   A
+               ADC   #5
+               ADC   ASTO
+               TAY
+               LDA   BYTES,X
+               STX   ASTO
+               JSR   AOUT
+               INC   ASTO
+               LDA   ASTO
+               CMP   #$10
+               BNE   SCLP7
+SCSK2          DEY
+               LDA   #$A0
+               JSR   COUT
+
+
+
+FINDBYTES
+               LDA   ASTO
+               BNE   .NOTZERO
+               JSR   DSPOFS
+               PLA
+               PHA
+               STA   VTAB
+               JSR   RDSK1      ; PRPAGE calculating CURBAS with VTAB
+               JSR   DSPINS
+               JSR   DSPSTMES
+               PLA
+               STA   VTAB
+               RTS
+.NOTZERO       DEC   ASTO
+                                ;here:
+                                ; BYTES: bytes to scan for
+                                ; ASTO: offset of last byte
+               LDA   CURBAS
+               PHA
+               LDA   CURBAS+1
+               PHA
+               LDA   CURY
+               PHA
+               LDA   BLOCK
+               PHA
+               LDA   BLOCK+1
+               PHA
+
+               LDA   #22
+               STA   VTAB
+               JSR   BASCALC
+
+               SEC
+               LDA   #LO DBUFRADDR+$0200
+               SBC   ASTO
+               STA   ADTOP
+               LDA   #HI DBUFRADDR+$0200
+               SBC   #0
+               STA   ADTOP+1
+
+               CLC
+               LDA   CURBAS
+               ADC   CURY
+               STA   ADDR
+               LDA   CURBAS+1
+               ADC   #0
+               STA   ADDR+1
+.L1            LDA   ADDR
+               CMP   BYTES
+               BEQ   .FOUNDONE
+.L2            INC   ADDR
+               BNE   .AX
+               INC   ADDR+1
+.AX            LDA   ADDR
+               CMP   ADTOP
+               BNE   .L1
+               LDA   ADDR+1
+               CMP   ADTOP+1
+               BNE   .L1
+
+               SEC
+               LDA   ADDR+1
+               SBC   #$02
+               STA   ADDR+1
+
+               LDY   ASTO
+               JMP   .BX
+.L3            LDA   (ADTOP),Y
+               STA   (ADDR),Y
+.BX            DEY
+               BPL   .L3
+
+               INC   BLOCK
+               BNE   .C
+               INC   BLOCK+1
+.C             JSR   .READONE
+               JMP   .L1
+
+.FOUNDONE
+               LDY   ASTO
+               BEQ   .FOUND
+.L4            LDA   (ADDR),Y
+               CMP   BYTES,Y
+               BNE   .L2
+               DEY
+               BPL   .L4
+
+.FOUND
+               LDA   #HI DBUFRADDR
+               CMP   ADDR+1
+               BNE   .E
+               LDA   #LO DBUFRADDR
+               CMP   ADDR
+               BEQ   .F
+.E             BCC   .F
+
+               CLC
+               LDA   ADDR+1
+               ADC   #$02
+               STA   ADDR+1
+
+               SEC
+               LDA   BLOCK
+               SBC   #1
+               STA   BLOCK
+               LDA   BLOCK+1
+               SBC   #0
+               STA   BLOCK+1
+               JSR   .READONE
+
+.F
+
+               PLA
+               PLA
+               PLA
+               PLA
+               PLA
+               PLA              ;forget old VTAB
+               LDA   #HI DBUFRADDR+$00C0
+               CMP   ADDR+1
+               BNE   .G
+               LDA   #LO DBUFRADDR+$00C0
+               CMP   ADDR
+               BEQ   .H
+.G             BCC   .H
+                                ;ADDR < DBUFRADDR+$00C0
+               LDA   #LO DBUFRADDR
+               STA   CURBAS
+               LDA   #HI DBUFRADDR
+               STA   CURBAS+1
+               LDA   #0
+               PHA
+               BRA   .J
+.H                              ;ADDR >= DBUFRADDR+$00C0
+               LDA   #HI DBUFRADDR+$0140
+               CMP   ADDR+1
+               BNE   .G1
+               LDA   #LO DBUFRADDR+$0140
+               CMP   ADDR
+               BEQ   .H1
+.G1            BCC   .H1
+                                ;ADDR < DBUFRADDR+$0140
+               LDA   #LO DBUFRADDR+$0080
+               STA   CURBAS
+               LDA   #HI DBUFRADDR+$0080
+               STA   CURBAS+1
+               LDA   #$80
+               PHA
+               BRA   .J
+.H1
+               LDA   #LO DBUFRADDR+$0100
+               STA   CURBAS
+               LDA   #HI DBUFRADDR+$0100
+               STA   CURBAS+1
+               LDA   #0
+               PHA
+.J
+               LDA   ADDR
+               PHA
+               LDA   ADDR+1
+               PHA
+               JSR   DSPOFS
+               JSR   PRPAGE
+               PLA
+               STA   CURBAS+1
+               PLA
+               PHA
+               AND   #%00001111
+               STA   CURY
+               PLA
+               AND   #%11110000
+               STA   CURBAS
+               PLA
+               STA   VTAB
+               SEC
+               LDA   CURBAS
+               SBC   VTAB
+               LSR   A
+               LSR   A
+               LSR   A
+               LSR   A
+               ADC   #4
+               STA   VTAB
+               RTS
+
+
+
+.READONE       LDY   #13
+               LDA   BLOCK+1
+               JSR   AOUT
+               LDA   BLOCK
+               JSR   AOUT
+               JSR   MLI
+               DB    READ_BLOCK
+               DW    PARMLIST
+               BCS   .D
+               LDA   READKBD
+               BMI   .D1        ;stop scanning if key pressed
+               RTS
+
+.D             JSR   ZEROBUFR
+.D1            JSR   TLHOME
+               JSR   DSPOFS
+               PLA
+               PLA              ; return address
+               PLA
+               PLA              ; forget BLOCK
+               PLA
+               STA   CURY
+               PLA
+               STA   CURBAS+1
+               PLA
+               STA   CURBAS
+               PLA
+               PHA
+               STA   VTAB
+               JSR   RDSK1      ; PRPAGE calculating CURBAS with VTAB
+               JSR   DSPINS
+               JSR   DSPSTMES
+               LDA   #21
+               STA   VTAB
+               JSR   BASCALC
+               LDY   #19
+               JSR   PRMESS
+               DB              "(not found)"
+               DB    0
+               PLA
+               STA   VTAB
+               RTS
+
+
+
+EXIT                            ; exit BloXap
+
+               PLA
+               PLA
+               LDA   #$15
+               JSR   ETYENTRY
+               JSR   MLI
+               DB    QUIT
+               DW    .PARMS
+.PARMS         DB    4
+               DB    0,0,0,0,0,0

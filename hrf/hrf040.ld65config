@@ -1,0 +1,9 @@
+MEMORY
+{
+	HRF040: start=$2000-$0C71, size=$0C71, file="hrf040";
+}
+
+SEGMENTS
+{
+	CODE: load=HRF040, type=RW;
+}

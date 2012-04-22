@@ -1,0 +1,1415 @@
+                               ;
+                               ;FED
+                               ;
+                               ;Font Editor
+                               ;
+                               ;A character editor for High Resoulution Fonts
+                               ;
+                               ;Copyright 1988 by Christopher A. Mosher
+                               ;
+               lst  off
+
+
+
+wndlft         }    $20
+wndwth         }    $21
+wndtop         }    $22
+wndbot         }    $23
+ch             }    $24        ;cursor horizontal position
+bas            }    $28        ;text screen base address ($28-$29)
+a1             }    $3C        ;temporary variable
+a2             }    $3E
+a3             }    $40
+a4             }    $42
+chraddr        }    $F8        ;address of character set
+defaddr        }    $FA        ;address of definition
+cmpaddr        }    $FC        ;address of comparison table
+addr           }    $FE        ;temporary address
+
+inptbufr       }    $0200      ;input buffer for GETLN
+
+workset        }    $40        ;starting page of working set buffer ($40-$49)
+
+bientry        }    $BE00
+doscmd         }    $BE03      ;BASIC Interpreter command execute
+printerr       }    $BE0C
+errcode        }    $BE0F
+
+readkbd        }    $C000      ;R   keyboard (sddddddd)
+clearkbd       }    $C010      ;RW  clear strobe
+
+bascalc        }    $FBC1      ;text screen base address calculator
+getln          }    $FD6F      ;monitor get input line routine
+monmove        }    $FE2C      ;monitor memory move subroutine
+
+
+
+               org  $5000
+               jmp  fed        ;entry point
+
+
+
+CMPOFST        DS   1          ;offset in comparison table of value
+CURPIX         DS   1          ;mask of definition byte for current pixel
+CURPIXST       DS   1          ;status of current pixel
+SPACE          DS   1          ;R7 character is declared as space in edit
+VTAB           DS   1          ;vtab
+HTAB           DS   1          ;htab
+HORIG          DS   1          ;original horizontal position
+CURCHAR        DS   1          ;current character
+CURLIN         DS   1          ;current line (index in definition)
+CURV           DS   1          ;current vtab
+CURH           DS   1          ;current htab
+CURVD          DS   1          ;current vtab in definition
+CURHD          DS   1          ;current htab in definition
+SECTION        DS   1          ;section
+CLRSET                         ;empty character set
+               HEX             0700
+               HEX             0000000000000000
+               HEX             FFFFFFFFFFFFFFFF
+BLOAD          ASC             "BLOAD"
+               DFB  0
+BSAVE          ASC             ",A$ ,L$ "
+BSAVE2         ASC             "BSAVE"
+               DFB  0
+
+
+
+FED            JSR  INIT
+BEGIN          LDA  #$01
+               STA  CURH
+               LDA  #$03
+               STA  CURV
+               LDA  #$00
+               STA  CURCHAR
+               JSR  HOME
+               LDA  #$01
+               STA  VTAB
+               LDA  #$00
+               STA  HTAB
+               JSR  PRINTSET
+               LDA  #$01
+               STA  VTAB
+               LDA  #$47
+               STA  HTAB
+               JSR  PRDEFBOX
+MAINLP         LDA  CURV
+               DFB  $1A        ;INA
+               JSR  BASCALC
+               LDA  CURH
+               STA  CH
+               LDA  #"^"
+               JSR  BLSTCHR
+               LDA  #$02
+               STA  VTAB
+               LDA  #$48
+               STA  HTAB
+               LDX  CURH
+               LDY  CURV
+               JSR  PRINTDEF
+               STA  CLEARKBD
+KBDLOOP        LDA  READKBD
+               BPL  KBDLOOP
+               STA  CLEARKBD
+               AND  #%01111111 ;(high bit off)
+               CMP  #'`'
+               BLT  KBS0
+               AND  #%11011111 ;(capitalize)
+KBS0           CMP  #'I'       ;I or <up-arrow> (up)
+               BNE  KBS01
+               JMP  UP
+KBS01          CMP  #$0B
+               BNE  KBS1
+               JMP  UP
+KBS1           CMP  #'K'       ;K or <down-arrow> (down)
+               BNE  KBS11
+               JMP  DOWN
+KBS11          CMP  #$0A
+               BNE  KBS2
+               JMP  DOWN
+KBS2           CMP  #'J'       ;J  or <left-arrow> (left)
+               BNE  KBS21
+               JMP  LEFT
+KBS21          CMP  #$08
+               BNE  KBS3
+               JMP  LEFT
+KBS3           CMP  #'L'       ;L or <right-arrow> (right)
+               BNE  KBS31
+               JMP  RIGHT
+KBS31          CMP  #$15
+               BNE  KBS4
+               JMP  RIGHT
+KBS4           CMP  #$20       ;<space> (enter edit mode)
+               BNE  KBS5
+               JMP  EDIT
+KBS5           CMP  #'R'       ;R (read)
+               BNE  KBS6
+               JMP  READ
+KBS6           CMP  #'W'       ;W (write)
+               BNE  KBS7
+               JMP  WRITE
+KBS7           CMP  #$1B       ;<esc> (exit)
+               BNE  KBDLOOP
+               JMP  EXIT
+
+PRINTSET                       ;i: VTAB, HTAB
+                               ;o: 256 characters printed in a box
+               LDA  #$00
+               STA  a1
+               LDA  VTAB
+               JSR  BASCALC
+               LDA  HTAB
+               STA  HORIG
+               STA  CH
+               LDX  #$41
+               LDA  #$DF       ;_
+PL3            JSR  BLSTCHR
+               INC  CH
+               DEX
+               BNE  PL3
+               LDY  #$08       ;Number of rows to print
+PL2            INC  VTAB
+               LDA  VTAB
+               JSR  BASCALC
+               LDA  HORIG
+               STA  CH
+               LDA  #$5F
+               JSR  BLSTCHR
+               LDA  HORIG
+               CLC
+               ADC  #$40
+               STA  CH
+               LDA  #$5A
+               JSR  BLSTCHR
+               INC  VTAB
+               LDA  VTAB
+               JSR  BASCALC
+               LDA  HORIG
+               STA  HTAB
+               STA  CH
+               LDA  #$5F
+               JSR  BLSTCHR
+               LDX  #$20
+               DEC  HTAB
+PL1            INC  HTAB
+               INC  HTAB
+               LDA  HTAB
+               STA  CH         ;Horizontal cursor position
+               JSR  TOSET1     ;Current character set to 1 (the edited set)
+               LDA  a1         ;Character to print
+               JSR  BLSTCHR    ;Print character
+               JSR  TOSET0     ;Current character set to 0 (the printing set)
+               INC  a1         ;Next character
+               DEX             ;One less column left
+               BNE  PL1        ;If more columns left then repeat
+               INC  CH
+               LDA  #$5A
+               JSR  BLSTCHR
+               DEY             ;One less row left
+               BNE  PL2        ;If more rows left then repeat
+               INC  VTAB
+               LDA  VTAB
+               JSR  BASCALC
+               LDA  HORIG
+               STA  CH
+               LDA  #$5F
+               JSR  BLSTCHR
+               LDA  CH
+               CLC
+               ADC  #$40
+               STA  CH
+               LDA  #$5A
+               JSR  BLSTCHR
+               INC  VTAB
+               LDA  VTAB
+               JSR  BASCALC
+               LDA  HORIG
+               STA  CH
+               LDX  #$41
+               LDA  #$4C
+PL4            JSR  BLSTCHR
+               INC  CH
+               DEX
+               BNE  PL4
+               RTS
+                               ;
+PRINTDEF                       ;i: VTAB, HTAB
+                               ;   X, Y  (col, row of char on scrn)
+                               ;o: definition printed
+               JSR  HRADDR
+               LDX  #$08
+PRDL1          LDA  VTAB
+               JSR  BASCALC
+               LDA  HTAB
+               STA  CH
+               LDY  #$00
+               LDA  (ADDR),Y
+               STA  a1
+               LDY  #$07
+PRDL2          LSR  a1
+               BCS  PRDS1
+               LDA  #$AE
+               BNE  PRDS2
+PRDS1          LDA  #$AA
+PRDS2          JSR  BLSTCHR
+               INC  CH
+               DEY
+               BNE  PRDL2
+               INC  VTAB
+               LDA  ADDR+1
+               CLC
+               ADC  #$04
+               STA  ADDR+1
+               DEX
+               BNE  PRDL1
+
+HRADDR                         ;i: X,Y (col,row of char)
+                               ;o: ADDR
+               TYA
+               JSR  BASCALC
+               LDA  BAS+1
+               CLC
+               ADC  #$1C
+               STA  ADDR+1
+               TXA
+               LSR
+               CLC
+               ADC  BAS
+               STA  ADDR
+               BCC  FDS1
+               INC  ADDR+1
+FDS1           RTS
+
+PRDEFBOX                       ;i: VTAB, HTAB
+                               ;o: box for definition printed
+               LDA  VTAB
+               JSR  BASCALC
+               LDA  HTAB
+               STA  CH
+               LDA  #$DF
+               LDX  #$09
+PRBL1          JSR  BLSTCHR
+               INC  CH
+               DEX
+               BNE  PRBL1
+               LDX  #$08
+PRBL2          INC  VTAB
+               LDA  VTAB
+               JSR  BASCALC
+               LDA  HTAB
+               STA  CH
+               LDA  #$5F
+               JSR  BLSTCHR
+               LDA  CH
+               CLC
+               ADC  #$08
+               STA  CH
+               LDA  #$5A
+               JSR  BLSTCHR
+               DEX
+               BNE  PRBL2
+               INC  VTAB
+               LDA  VTAB
+               JSR  BASCALC
+               LDA  HTAB
+               STA  CH
+               LDA  #$4C
+               LDX  #$09
+PRBL3          JSR  BLSTCHR
+               INC  CH
+               DEX
+               BNE  PRBL3
+               RTS
+
+GETDEF                         ;i: CURCHAR, VSET1
+                               ;o: CHRADDR, CMPADDR, (DEFADDR, CMPOFST)
+                               ;                           ^if found^
+                               ;if not found, DEFADDR = first definition
+               JSR  SETADDRS
+               CLC
+               LDA  DEFADDR
+               LDY  #$09
+               ADC  (CHRADDR),Y
+               STA  ADDR
+               LDY  #$11
+               LDA  (CHRADDR),Y
+               DFB  $1A        ;INA
+               ADC  ADDR
+               STA  DEFADDR
+               LDA  DEFADDR+1
+               ADC  #$00
+               STA  DEFADDR+1
+               CLC
+               LDA  DEFADDR
+               SBC  CMPADDR
+               TAY
+               CMP  #$FF
+               BEQ  GDS5
+GDL1           LDA  (CMPADDR),Y
+               CMP  CURCHAR
+               BNE  GDS4
+               LDA  #$00
+               STA  ADDR+1
+               STY  CMPOFST
+               STY  ADDR
+               ASL  ADDR
+               ROL  ADDR+1
+               ASL  ADDR
+               ROL  ADDR+1
+               ASL  ADDR
+               ROL  ADDR+1
+               LDA  ADDR
+               ADC  DEFADDR
+               STA  DEFADDR
+               LDA  ADDR+1
+               ADC  DEFADDR+1
+               STA  DEFADDR+1
+               CLC
+               RTS             ;found
+GDS4           DEY
+               CPY  #$FF
+               BNE  GDL1
+GDS5           SEC
+               RTS             ;not found
+
+UP             LDA  CURV
+               DFB  $1A        ;INA
+               JSR  BASCALC
+               LDA  CURH
+               STA  CH
+               LDA  #$A0
+               JSR  BLSTCHR
+               LDA  CURCHAR
+               SEC
+               SBC  #$20
+               STA  CURCHAR
+               DEC  CURV
+               DEC  CURV
+               LDA  CURV
+               CMP  #$01
+               BNE  UPSK
+               LDA  #$11
+               STA  CURV
+UPSK           JMP  MAINLP
+
+DOWN           LDA  CURV
+               DFB  $1A        ;INA
+               JSR  BASCALC
+               LDA  CURH
+               STA  CH
+               LDA  #$A0
+               JSR  BLSTCHR
+               LDA  CURCHAR
+               CLC
+               ADC  #$20
+               STA  CURCHAR
+               INC  CURV
+               INC  CURV
+               LDA  CURV
+               CMP  #$13
+               BNE  DOWNSK
+               LDA  #$03
+               STA  CURV
+DOWNSK         JMP  MAINLP
+
+LEFT           LDA  CURV
+               DFB  $1A        ;INA
+               JSR  BASCALC
+               LDA  CURH
+               STA  CH
+               LDA  #$A0
+               JSR  BLSTCHR
+               DEC  CURCHAR
+               DEC  CURH
+               DEC  CURH
+               BPL  LEFTSK
+               LDA  #$3F
+               STA  CURH
+               DEC  CURV
+               DEC  CURV
+               LDA  CURV
+               CMP  #$01
+               BNE  LEFTSK
+               LDA  #$11
+               STA  CURV
+LEFTSK         JMP  MAINLP
+
+RIGHT          LDA  CURV
+               DFB  $1A        ;INA
+               JSR  BASCALC
+               LDA  CURH
+               STA  CH
+               LDA  #$A0
+               JSR  BLSTCHR
+               INC  CURCHAR
+               INC  CURH
+               INC  CURH
+               LDA  CURH
+               CMP  #$41
+               BNE  RIGHTSK
+               LDA  #$01
+               STA  CURH
+               INC  CURV
+               INC  CURV
+               LDA  CURV
+               CMP  #$13
+               BNE  RIGHTSK
+               LDA  #$03
+               STA  CURV
+RIGHTSK        JMP  MAINLP
+
+EDIT           LDA  #0
+               STA  SPACE
+               JSR  GETDEF
+               BCC  EDL2
+               JSR  NEWDEF
+EDL2           LDA  #$07
+               STA  CURLIN     ;= top line
+               LDA  #$01
+               STA  CURPIX     ;00000001 = *......
+               LDA  #$02
+               STA  CURVD
+               LDA  #$48
+               STA  CURHD
+EDL1           LDA  CURVD
+               JSR  BASCALC
+               LDA  CURHD
+               STA  CH
+               LDY  CURLIN
+               LDA  (DEFADDR),Y
+               AND  CURPIX
+               BEQ  EDITS1
+               LDA  #$80
+               STA  CURPIXST
+               LDA  #$5E
+               BNE  EDITS2
+EDITS1         LDA  #$00
+               STA  CURPIXST
+               LDA  #$5D
+EDITS2         JSR  BLSTCHR
+               STA  CLEARKBD
+EDITL1         LDA  READKBD
+               BPL  EDITL1
+               STA  CLEARKBD
+               AND  #$7F       ;01111111 (high bit off)
+               CMP  #$60
+               BMI  EKBS0
+               AND  #$DF       ;11011111 (capitalize)
+EKBS0          CMP  #$49       ;I or <up-arrow> (up)
+               BNE  EKBS01
+               JMP  EUP
+EKBS01         CMP  #$0B
+               BNE  EKBS1
+               JMP  EUP
+EKBS1          CMP  #$4B       ;K or <down-arrow> (down)
+               BNE  EKBS11
+               JMP  EDOWN
+EKBS11         CMP  #$0A
+               BNE  EKBS2
+               JMP  EDOWN
+EKBS2          CMP  #$4A       ;J  or <left-arrow> (left)
+               BNE  EKBS21
+               JMP  ELEFT
+EKBS21         CMP  #$08
+               BNE  EKBS3
+               JMP  ELEFT
+EKBS3          CMP  #$4C       ;L or <right-arrow> (right)
+               BNE  EKBS31
+               JMP  ERIGHT
+EKBS31         CMP  #$15
+               BNE  EKBS4
+               JMP  ERIGHT
+EKBS4          CMP  #$20       ;<space> (resume search mode)
+               BNE  EKBS5
+               JMP  RESUME
+EKBS5          CMP  #$41       ;A (turn off pixel)
+               BNE  EKBS6
+               JMP  OFFPIX
+EKBS6          CMP  #$53       ;S (turn on pixel)
+               BNE  EKBS7
+               JMP  ONPIX
+EKBS7          CMP  #$5A       ;Z (zero definition)
+               BNE  EKBS8
+               JMP  ZERO
+EKBS8          CMP  #$58       ;X (declare as space)
+               BNE  EDITL1
+               JMP  DCLSP
+
+EUP            LDA  CURHD
+               STA  CH
+               LDA  CURVD
+               JSR  BASCALC
+               BIT  CURPIXST
+               BPL  EUS1
+               LDA  #$AA
+               BNE  EUS2
+EUS1           LDA  #$AE
+EUS2           JSR  BLSTCHR
+               DEC  CURVD
+               INC  CURLIN
+               LDA  CURLIN
+               CMP  #$08
+               BNE  EUS3
+               LDA  #$09
+               STA  CURVD
+               LDA  #$00
+               STA  CURLIN
+EUS3           JMP  EDL1
+
+EDOWN          LDA  CURHD
+               STA  CH
+               LDA  CURVD
+               JSR  BASCALC
+               BIT  CURPIXST
+               BPL  EDS1
+               LDA  #$AA
+               BNE  EDS2
+EDS1           LDA  #$AE
+EDS2           JSR  BLSTCHR
+               INC  CURVD
+               DEC  CURLIN
+               BPL  EDS3
+               LDA  #$02
+               STA  CURVD
+               LDA  #$07
+               STA  CURLIN
+EDS3           JMP  EDL1
+
+ELEFT          LDA  CURHD
+               STA  CH
+               LDA  CURVD
+               JSR  BASCALC
+               BIT  CURPIXST
+               BPL  ELS1
+               LDA  #$AA
+               BNE  ELS2
+ELS1           LDA  #$AE
+ELS2           JSR  BLSTCHR
+               DEC  CURHD
+               LDA  CURPIX
+               LSR
+               STA  CURPIX
+               BNE  ELS3
+               LDA  #$40
+               STA  CURPIX
+               LDA  #$4E
+               STA  CURHD
+ELS3           JMP  EDL1
+
+ERIGHT         LDA  CURHD
+               STA  CH
+               LDA  CURVD
+               JSR  BASCALC
+               BIT  CURPIXST
+               BPL  ERS1
+               LDA  #$AA
+               BNE  ERS2
+ERS1           LDA  #$AE
+ERS2           JSR  BLSTCHR
+               INC  CURHD
+               LDA  CURPIX
+               ASL
+               STA  CURPIX
+               CMP  #$80
+               BNE  ERS3
+               LDA  #$01
+               STA  CURPIX
+               LDA  #$48
+               STA  CURHD
+ERS3           JMP  EDL1
+
+OFFPIX         LDA  CURPIX
+               EOR  #$FF       ;negate
+               LDY  CURLIN
+               AND  (DEFADDR),Y ;turn off pixel
+               STA  (DEFADDR),Y
+               LDA  #$00
+               STA  CURPIXST
+               LDA  #$5D
+               JSR  BLSTCHR
+               JSR  RENEWCC
+               JMP  EDL1
+
+ONPIX          LDA  CURPIX
+               LDY  CURLIN
+               ORA  (DEFADDR),Y ;turn on pixel
+               STA  (DEFADDR),Y
+               LDA  #$80
+               STA  CURPIXST
+               LDA  #$5E
+               JSR  BLSTCHR
+               JSR  RENEWCC
+               JMP  EDL1
+
+RENEWCC        LDA  CURH
+               STA  CH
+               LDA  CURV
+               JSR  BASCALC
+               JSR  TOSET1
+               LDA  CURCHAR
+               JSR  BLSTCHR
+               JSR  TOSET0
+               RTS
+
+RESUME         LDA  #$00
+               LDY  #$07
+REL1           ORA  (DEFADDR),Y
+               DEY
+               BPL  REL1
+               ORA  SPACE
+               BNE  RES1
+               JSR  DELDEF
+RES1           JMP  MAINLP
+
+SETADDRS       LDA  #<VSET1    ;i: VSET1
+               STA  ADDR       ;o: CHRADDR, CMPADDR, (DEFADDR=CMPADDR)
+               LDA  #>VSET1
+               STA  ADDR+1
+               LDY  #$00
+               LDA  (ADDR),Y
+               STA  CMPADDR
+               STA  DEFADDR
+               STA  CHRADDR
+               INY
+               LDA  (ADDR),Y
+               STA  CMPADDR+1
+               STA  DEFADDR+1
+               STA  CHRADDR+1
+               CLC
+               LDA  CHRADDR
+               ADC  #$12
+               STA  CMPADDR
+               STA  DEFADDR
+               LDA  CHRADDR+1
+               ADC  #$00
+               STA  CMPADDR+1
+               STA  DEFADDR+1
+               RTS
+
+TOSET1         LDA  #$02
+               STA  CHARARG
+               RTS
+
+TOSET0         LDA  #$00
+               STA  CHARARG
+               RTS
+
+ZERO           LDY  #$07
+               LDA  #$00
+ZL1            STA  (DEFADDR),Y
+               DEY
+               BPL  ZL1
+               JSR  RENEWCC
+               LDA  #$02
+               STA  VTAB
+               LDA  #$48
+               STA  HTAB
+               LDX  CURH
+               LDY  CURV
+               JSR  PRINTDEF
+               JMP  EDL2
+
+DCLSP          LDA  #$80
+               STA  SPACE
+               JMP  ZERO
+
+CLEARSET       LDA  #$00
+               STA  VSET1
+               LDA  #$40
+               STA  VSET1+1
+               JSR  SETADDRS
+               LDY  #$11
+CLRLP          LDA  CLRSET,Y
+               STA  (CHRADDR),Y
+               DEY
+               BPL  CLRLP
+               RTS
+
+NEWDEF         CLC
+               LDY  #$09
+               LDA  (CHRADDR),Y
+               LDY  #$11
+               ADC  (CHRADDR),Y
+               DFB  $1A        ;INA
+               STA  a2
+               LDY  #$00
+               STY  CMPOFST
+               LDA  a2
+               BNE  NDS6
+               JMP  NDS5
+NDS6           LDA  CURCHAR
+               AND  #$E0
+NDL1           CMP  (CMPADDR),Y
+               BCC  NDS1       ;branch if less than
+               BEQ  NDS1       ;or equal to
+               INY
+               CPY  a2
+               BNE  NDL1       ;fall out if inserting at very end
+NDS1           STY  CMPOFST
+               STY  ADDR
+               LDA  #$00
+               STA  ADDR+1
+               STA  a2+1
+               ASL  ADDR
+               ROL  ADDR+1
+               ASL  ADDR
+               ROL  ADDR+1
+               ASL  ADDR
+               ROL  ADDR+1
+               CLC
+               LDA  ADDR
+               ADC  DEFADDR
+               STA  DEFADDR
+               STA  a1
+               LDA  ADDR+1
+               ADC  DEFADDR+1
+               STA  DEFADDR+1
+               STA  a1+1
+               ASL  a2
+               ROL  a2+1
+               ASL  a2
+               ROL  a2+1
+               ASL  a2
+               ROL  a2+1
+               CLC
+               LDA  a2
+               ADC  DEFADDR
+               STA  a2
+               LDA  a2+1
+               ADC  DEFADDR+1
+               STA  a2+1
+               CLC
+               LDA  DEFADDR
+               ADC  #$09
+               STA  a4
+               LDA  DEFADDR+1
+               ADC  #$00
+               STA  a4+1
+               JSR  UPMOVE
+               CLC
+               LDA  CMPADDR
+               ADC  CMPOFST
+               STA  a1
+               LDA  CMPADDR+1
+               ADC  #$00
+               STA  a1+1
+               LDA  DEFADDR
+               STA  a2
+               LDA  DEFADDR+1
+               STA  a2+1
+               CLC
+               LDA  a1
+               ADC  #$01
+               STA  a4
+               LDA  a1+1
+               ADC  #$00
+               STA  a4+1
+               JSR  UPMOVE
+NDS5           LDY  #$01
+               LDA  (CHRADDR),Y
+               STA  a1
+               JSR  GETSEC
+               TAX
+               TAY
+               INY
+               INY
+               LDA  CMPOFST
+               STA  (CHRADDR),Y
+NDL2           LSR  a1
+               DEX
+               BPL  NDL2
+NDL3           INY
+               CPY  #$0A
+               BEQ  NDS2
+               LSR  a1
+               BCC  NDL3
+               LDA  (CHRADDR),Y
+               DFB  $1A        ;INA
+               STA  (CHRADDR),Y
+               JMP  NDL3
+NDS2           JSR  GETSEC
+               CMP  #$07
+               BNE  NDS3
+               LDY  #$01
+               LDA  (CHRADDR),Y
+               ASL
+               BCS  NDS3
+               LDA  #$00
+               LDY  #$11
+               STA  (CHRADDR),Y
+               BNE  NDS4
+NDS3           CLC
+               ADC  #$0A
+               TAY
+               LDA  (CHRADDR),Y
+               DFB  $1A        ;INA
+               STA  (CHRADDR),Y
+NDS4           JSR  GETMSK
+               LDY  #$01
+               ORA  (CHRADDR),Y
+               STA  (CHRADDR),Y ;turn sec on
+               JSR  FIXSEC7
+               LDA  CURCHAR
+               LDY  CMPOFST
+               STA  (CMPADDR),Y
+               CLC
+               LDA  DEFADDR
+               ADC  #$01
+               STA  DEFADDR
+               LDA  DEFADDR+1
+               ADC  #$00
+               STA  DEFADDR+1
+               LDY  #$07
+               LDA  #$00
+NDL4           STA  (DEFADDR),Y
+               DEY
+               BPL  NDL4
+               RTS
+
+DELDEF         CLC
+               LDA  CMPADDR
+               ADC  CMPOFST
+               ADC  #$01
+               STA  a1
+               LDA  CMPADDR+1
+               ADC  #$00
+               STA  a1+1
+               LDA  DEFADDR
+               STA  a2
+               LDA  DEFADDR+1
+               STA  a2+1
+               CLC
+               LDA  CMPADDR
+               ADC  CMPOFST
+               STA  a4
+               LDA  CMPADDR+1
+               ADC  #$00
+               STA  a4+1
+               JSR  MOVE
+               CLC
+               LDY  #$11
+               LDA  (CHRADDR),Y
+               DFB  $1A        ;INA
+               LDY  #$09
+               ADC  (CHRADDR),Y
+               STA  a2
+               STA  ADDR
+               LDA  #$00
+               ADC  #$00
+               STA  a2+1
+               STA  ADDR+1
+               ASL  ADDR
+               ROL  ADDR+1
+               ASL  ADDR
+               ROL  ADDR+1
+               ASL  ADDR
+               ROL  ADDR+1
+               CLC
+               LDA  ADDR
+               ADC  a2
+               STA  a2
+               LDA  ADDR+1
+               ADC  a2+1
+               STA  a2+1
+               CLC
+               LDA  a2
+               ADC  #$12
+               STA  a2
+               LDA  a2+1
+               ADC  #$00
+               STA  a2+1
+               CLC
+               LDA  a2
+               ADC  CHRADDR
+               STA  a2
+               LDA  a2+1
+               ADC  CHRADDR+1
+               STA  a2+1
+               CLC
+               LDA  DEFADDR
+               ADC  #$08
+               STA  a1
+               LDA  DEFADDR+1
+               ADC  #$00
+               STA  a1+1
+               SEC
+               LDA  DEFADDR
+               SBC  #$01
+               STA  a4
+               LDA  DEFADDR+1
+               SBC  #$00
+               STA  a4+1
+               JSR  MOVE
+               JSR  GETSEC
+               TAY
+               INY
+               INY
+DDL1           INY
+               CPY  #$0A
+               BEQ  DDS2
+               LDA  (CHRADDR),Y
+               BEQ  DDL1
+               DFB  $3A        ;DEA
+               STA  (CHRADDR),Y
+               JMP  DDL1
+DDS2           JSR  GETSEC
+               CLC
+               ADC  #$0A
+               TAY
+               LDA  (CHRADDR),Y
+               DFB  $3A        ;DEA
+               STA  (CHRADDR),Y
+               CMP  #$FF
+               BNE  DDS1
+               JSR  GETMSK
+               EOR  #$FF
+               LDY  #$01
+               AND  (CHRADDR),Y
+               STA  (CHRADDR),Y
+               JSR  GETSEC
+               TAY
+               INY
+               INY
+               LDA  #$00
+               STA  (CHRADDR),Y
+DDS1           JSR  FIXSEC7
+               RTS
+
+FIXSEC7        LDY  #$01
+               LDA  (CHRADDR),Y
+               ASL
+               BCS  EXFS7
+               LDY  #$06
+FS7L1          ASL
+               BCS  FS7S1
+               DEY
+               BNE  FS7L1
+FS7S1          INY
+               INY
+               LDA  (CHRADDR),Y
+               STA  a1
+               TYA
+               CLC
+               ADC  #$08
+               TAY
+               LDA  (CHRADDR),Y
+               LDY  #$11
+               STA  (CHRADDR),Y
+               LDA  a1
+               LDY  #$09
+               STA  (CHRADDR),Y
+EXFS7          RTS
+
+MOVE           LDY  #$00
+               JMP  MONMOVE
+
+GETMSK         JSR  GETSEC     ;i: CURCHAR
+               TAY             ;o: SEC (section number), A (mask)
+               LDA  #$00
+               SEC
+GML1           ROL
+               DEY
+               BPL  GML1
+               RTS
+
+GETSEC         LDA  CURCHAR    ;i: CURCHAR
+               LSR             ;o: SEC and A (section number)
+               LSR
+               LSR
+               LSR
+               LSR
+               STA  SECTION
+               RTS
+
+UPMOVE         SEC
+               LDA  a2
+               SBC  a1
+               STA  a3
+               LDA  a2+1
+               SBC  a1+1
+               STA  a3+1
+               CLC
+               LDA  a4
+               ADC  a3
+               STA  a3
+               LDA  a4+1
+               ADC  a3+1
+               STA  a3+1
+               LDY  #$00
+UML1           LDA  (a2),Y
+               STA  (a3),Y
+               LDA  a2
+               CMP  a1
+               BNE  UMS3
+               LDA  a2+1
+               CMP  a1+1
+               BNE  UMS3
+               BEQ  UMS4
+UMS3           DEC  a2
+               LDA  a2
+               CMP  #$FF
+               BNE  UMS1
+               DEC  a2+1
+UMS1           DEC  a3
+               LDA  a3
+               CMP  #$FF
+               BNE  UML1
+               DEC  a3+1
+               BNE  UML1
+UMS4           RTS
+
+READ
+               LDA  #$16
+               STA  VTAB
+               LDA  #$00
+               STA  HTAB
+               JSR  PRINT
+               ASC             "Enter pathname of file to read:"
+               HEX  00
+               LDA  #$20
+               STA  HTAB
+               JSR  INPUT
+               JSR  HOME
+               LDY  #$00
+RDL1           LDA  INPTBUF,Y
+               CMP  #$8D
+               BEQ  RDS2
+               ORA  #$80       ;set most significant bit
+               CMP  #$E0
+               BMI  RDS3
+               AND  #$DF       ;capitalize
+RDS3           STA  INPTBUF,Y
+               INY
+               BNE  RDL1
+RDS2           STY  a2
+               LDA  #<INPTBUF
+               STA  a1
+               LDA  #>INPTBUF
+               STA  a1+1
+               CLC
+               LDA  #<INPTBUF
+               ADC  a2
+               STA  a2
+               LDA  #>INPTBUF
+               ADC  #$00
+               STA  a2+1
+               CLC
+               LDA  #<INPTBUF
+               ADC  #$05
+               STA  a4
+               LDA  #>INPTBUF
+               ADC  #$00
+               STA  a4+1
+               JSR  UPMOVE
+               LDY  #$00
+RDL2           LDA  BLOAD,Y
+               BEQ  RDS1
+               STA  INPTBUF,Y
+               INY
+               BNE  RDL2
+RDS1           JSR  DOSCMD
+               LDA  ERRCODE
+               BEQ  RDS4
+               JSR  PRINTERR
+RDL3           BIT  READKBD
+               BPL  RDL3
+RDS4           JMP  BEGIN
+
+WRITE
+               LDY  #$11
+               LDA  (CHRADDR),Y
+               DFB  $1A        ;INA
+               CLC
+               LDY  #$09
+               ADC  (CHRADDR),Y
+               STA  a1
+               STA  a2
+               LDA  #$00
+               ADC  #$00
+               STA  a1+1
+               STA  a2+1
+               ASL  a2
+               ROL  a2+1
+               ASL  a2
+               ROL  a2+1
+               ASL  a2
+               ROL  a2+1
+               CLC
+               LDA  a2
+               ADC  a1
+               STA  a1
+               LDA  a2+1
+               ADC  a1+1
+               STA  a1+1
+               CLC
+               LDA  a1
+               ADC  #$12
+               STA  a1
+               LDA  a1+1
+               ADC  #$00
+               STA  a1+1
+               LDA  #$16
+               STA  VTAB
+               LDA  #$00
+               STA  HTAB
+               JSR  PRINT
+               ASC             "Enter pathname of file to write:"
+               HEX  00
+               LDA  #$21
+               STA  HTAB
+               JSR  INPUT
+               JSR  HOME
+               LDY  #$00
+WTL1           LDA  INPTBUF,Y
+               CMP  #$8D
+               BEQ  WTS2
+               ORA  #$80       ;set most significant bit
+               CMP  #$E0
+               BMI  WTS3
+               AND  #$DF       ;capitalize
+WTS3           STA  INPTBUF,Y
+               INY
+               BNE  WTL1
+WTS2           LDX  #$00
+WTL2           LDA  BSAVE,X
+               INX
+               CMP  #$A0
+               BEQ  WTS4
+               STA  INPTBUF,Y
+               INY
+               BNE  WTL2
+WTS4           LDA  VSET1+1
+               LSR
+               LSR
+               LSR
+               LSR
+               ORA  #$B0
+               CMP  #$BA
+               BMI  WTS5
+               CLC
+               ADC  #$07
+WTS5           STA  INPTBUF,Y
+               INY
+               LDA  VSET1+1
+               AND  #$0F
+               ORA  #$B0
+               CMP  #$BA
+               BMI  WTS6
+               CLC
+               ADC  #$07
+WTS6           STA  INPTBUF,Y
+               INY
+               LDA  VSET1
+               LSR
+               LSR
+               LSR
+               LSR
+               ORA  #$B0
+               CMP  #$BA
+               BMI  WTS7
+               CLC
+               ADC  #$07
+WTS7           STA  INPTBUF,Y
+               INY
+               LDA  VSET1
+               AND  #$0F
+               ORA  #$B0
+               CMP  #$BA
+               BMI  WTS8
+               CLC
+               ADC  #$07
+WTS8           STA  INPTBUF,Y
+               INY
+WTL3           LDA  BSAVE,X
+               INX
+               CMP  #$A0
+               BEQ  WTS9
+               STA  INPTBUF,Y
+               INY
+               BNE  WTL3
+WTS9           LDA  a1+1
+               LSR
+               LSR
+               LSR
+               LSR
+               ORA  #$B0
+               CMP  #$BA
+               BMI  WTS10
+               CLC
+               ADC  #$07
+WTS10          STA  INPTBUF,Y
+               INY
+               LDA  a1+1
+               AND  #$0F
+               ORA  #$B0
+               CMP  #$BA
+               BMI  WTS11
+               CLC
+               ADC  #$07
+WTS11          STA  INPTBUF,Y
+               INY
+               LDA  a1
+               LSR
+               LSR
+               LSR
+               LSR
+               ORA  #$B0
+               CMP  #$BA
+               BMI  WTS12
+               CLC
+               ADC  #$07
+WTS12          STA  INPTBUF,Y
+               INY
+               LDA  a1
+               AND  #$0F
+               ORA  #$B0
+               CMP  #$BA
+               BMI  WTS13
+               CLC
+               ADC  #$07
+WTS13          STA  INPTBUF,Y
+               INY
+               LDA  #$8D
+               STA  INPTBUF,Y
+               INY
+               STY  a2
+               LDA  #<INPTBUF
+               STA  a1
+               LDA  #>INPTBUF
+               STA  a1+1
+               CLC
+               LDA  #<INPTBUF
+               ADC  a2
+               STA  a2
+               LDA  #>INPTBUF
+               ADC  #$00
+               STA  a2+1
+               CLC
+               LDA  #<INPTBUF
+               ADC  #$05
+               STA  a4
+               LDA  #>INPTBUF
+               ADC  #$00
+               STA  a4+1
+               JSR  UPMOVE
+               LDY  #$00
+WTL4           LDA  BSAVE2,Y
+               BEQ  WTS14
+               STA  INPTBUF,Y
+               INY
+               BNE  WTL4
+WTS14          JSR  DOSCMD
+               LDA  ERRCODE
+               BEQ  WTS15
+               JSR  PRINTERR
+WTL5           BIT  READKBD
+               BPL  WTL5
+WTS15          JMP  BEGIN
+
+PRINT          PLA
+               STA  ADDR
+               PLA
+               STA  ADDR+1
+               LDA  HTAB
+               STA  CH
+               LDA  VTAB
+               JSR  BASCALC
+               LDY  #$01
+PRL1           LDA  (ADDR),Y
+               BEQ  PRS1
+               JSR  BLSTCHR
+               INC  CH
+               INY
+               BNE  PRL1
+PRS1           TYA
+               CLC
+               ADC  ADDR
+               STA  ADDR
+               LDA  #$00
+               ADC  ADDR+1
+               PHA
+               LDA  ADDR
+               PHA
+               RTS
+
+INPUT          LDA  HTAB
+               STA  CH
+               jsr  getln
+               RTS
+
+INIT           JSR  CLEARSET
+               LDA  #<PRTSET
+               STA  VSET0
+               LDA  #>PRTSET
+               STA  VSET0+1
+               LDA  #0
+               STA  WNDLFT
+               STA  WNDTOP
+               LDA  #80
+               STA  WNDWTH
+               LDA  #24
+               STA  WNDBOT
+               JSR  HOME
+               LDA  #0
+               STA  HTAB
+               STA  VTAB
+               JSR  PRINT
+               INV             '                                   '
+               INV             'Font Editor'
+               INV             '                                  '
+               DFB  0
+               LDA  #1
+               STA  WNDTOP
+               RTS
+
+EXIT
+               LDA  #0
+               STA  WNDTOP
+               LDA  #$18
+               STA  VSET0
+               LDA  #$10
+               STA  VSET0+1
+               JSR  HOME
+               JMP  BIENTRY
+
+PRTSET         DFB  $00        ;beginning of set used for printing
+               DUM  $1FA9      ;Dummy code for HRF global vector table
+VSET0          DA   0          ;0
+VSET1          DA   0          ;1
+               DA   0          ;2
+               DA   0          ;3
+               DA   0          ;4
+               DA   0          ;5
+               DA   0          ;6
+               DA   0          ;7
+               DA   0          ;8
+               DA   0          ;9
+WHEREMEM       HEX  0000
+CHARARG        HEX  00
+FREMEM         DA   0
+ID             HEX  00
+ESCCURSR       HEX  0000000000000000
+ESCCURV        DA   0
+SSCOSIB        HEX  00
+INVERTO        HEX  00
+UNDRSCR        HEX  00
+PAGE           HEX  00
+GTLNCHK        DA   0
+CGTLNCHK       DA   0
+BELVEC         DA   0
+KEYPRVEC       DA   0
+OUTPUTV        DA   0
+INPUTV         DA   0
+DLYVAL         HEX  00
+DLYLPCNT       HEX  00
+CYCLE          JMP  0
+SCRNCHR        JMP  0
+EXTCELRV       JMP  0
+DEFADR         JMP  0
+ENVIRON        JMP  0
+BOOTUP         JMP  0
+BLSTCHR        JMP  0
+OUTDEV         JMP  0
+ESCE           JMP  0
+ESCF           JMP  0
+HOME           JMP  0

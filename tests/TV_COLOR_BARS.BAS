@@ -1,0 +1,71 @@
+NEW
+
+
+
+   1 GR : POKE 49234,0
+   2 DATA 15,13,14,12,3,9,6
+   3 DATA 6,0,3,0,14,0,15
+   4 GOTO 500
+
+
+
+   5 REM
+   6   FOR L = 0 TO 5 * 7 - 1 STEP 5
+  10     READ C
+  15     COLOR = C
+  20     GOSUB 1000
+  30   NEXT L
+  40 RETURN
+
+
+
+  48 REM
+  49   COLOR = 0 : GOSUB 3000
+  50   DATA 2,15,1,0,5,0
+  53   FOR L = 0 TO 6 * 6 - 1 STEP 6
+  55     READ C
+  60     COLOR = C
+  65     GOSUB 2000
+  70   NEXT L
+  75 RETURN
+
+
+
+ 500 T =  0 : B = 32 : GOSUB  5
+ 510 T = 33 : B = 36 : GOSUB  5
+ 520 T = 37 : B = 47 : GOSUB 48
+
+ 600 POKE -16368,0
+ 610 K =  PEEK(-16384) : IF K < 128 THEN 610
+ 615 POKE -16368,0
+ 620 TEXT
+ 630 HOME
+ 999 END
+
+
+
+1000 REM
+1010   FOR X = L TO L + 4
+1020     VLIN T,B AT X
+1030   NEXT X
+1040 RETURN
+
+
+
+2000 REM
+2010   FOR X = L TO L + 5
+2020     VLIN T,B AT X
+2030   NEXT X
+2040 RETURN
+
+
+
+3000 REM
+3010   FOR Y = T TO B
+3020     HLIN 0,39 AT Y
+3030   NEXT Y
+3040 RETURN
+
+
+
+RUN

@@ -1,0 +1,11 @@
+ 5 POKE 49168,0
+10 K =  PEEK (49152)
+15 IF K < 128 GOTO 10
+20 HI =  INT (K / 16)
+30 LO = K - (HI * 16)
+40 IF LO > 9 THEN LO = LO + 7
+50 LO = LO + 48
+60 IF HI > 9 THEN HI = HI + 7
+70 HI = HI + 48
+80 PRINT "$"; CHR$ (HI); CHR$ (LO)
+90 GOTO 5

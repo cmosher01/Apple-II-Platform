@@ -1,0 +1,15 @@
+0300-   8D 52 C0    STA   $C052
+0303-   A9 E0       LDA   #$E0
+0305-   A2 04       LDX   #$04
+0307-   CD 51 C0    CMP   $C051
+030A-   D0 F9       BNE   $0305
+030C-   CA          DEX
+030D-   D0 F8       BNE   $0307
+030F-   A9 A0       LDA   #$A0
+0311-   A2 04       LDX   #$04
+0313-   CD 50 C0    CMP   $C050
+0316-   D0 F9       BNE   $0311
+0318-   CA          DEX
+0319-   D0 F8       BNE   $0313
+031B-   8D 51 C0    STA   $C051
+031E-   60          RTS

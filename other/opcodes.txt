@@ -1,0 +1,154 @@
+                               ;
+                               ;Operational Codes
+                               ;
+                               ;  This file holds all op codes valid to
+                               ;Merlin.  They are separated as they are in
+                               ;the data tables, and they are in the exact
+                               ;same order that the tables are.
+                               ;
+
+
+
+               }
+               equ
+               ~~~
+               pmc
+               hex
+               dfb
+               da
+               ddb
+               ds
+               lst
+               ast
+               org
+               obj
+               set
+               skp
+               pag
+               pau
+               exp
+               put
+               tr
+               chk
+               var
+               sav
+               kbd
+               end
+               dsk
+               lup
+               mm~
+               err
+               usr
+               dum
+               den
+               asc
+               dci
+               fls
+               inv
+               rev
+
+
+
+               |||
+               do
+               els
+               fin
+               mac
+               eom
+               if
+
+
+
+               clc
+               dex
+               dey
+               inx
+               iny
+               rts
+               sec
+               tax
+               tay
+               txa
+               tya
+               pha
+               php
+               pla
+               plp
+               tsx
+               txs
+               cld
+               sed
+               sei
+               rti
+               cli
+               clv
+               nop
+               brk
+               rtn
+               bk
+               rs
+               nul
+
+
+
+               bcc
+               bcs
+               beq
+               bmi
+               bne
+               blt
+               bge
+               bpl
+               bvc
+               bvs
+               br
+               bnc
+               bc
+               bp
+               bm
+               bz
+               bnz
+               bmq
+               bnm
+               bs
+
+
+
+               ld
+               st
+               ldd
+               std
+               pop
+               stp
+               add
+               sub
+               pop
+               cpr
+               inr
+               dcr
+
+
+
+               sta
+               stx
+               sty
+               lda
+               ldx
+               ldy
+               adc
+               and
+               asl
+               cmp
+               cpx
+               cpy
+               dec
+               eor
+               inc
+               jmp
+               jsr
+               sbc
+               ora
+               lsr
+               bit
+               rol
+               ror

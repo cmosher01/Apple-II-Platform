@@ -1,0 +1,1276 @@
+                .FEATURE LABELS_WITHOUT_COLONS, LEADING_DOT_IN_IDENTIFIERS
+
+
+
+GRPHL          =  $6
+GRPHH          =  $7
+CHRTBLBL       =  $8
+CHRTBLBH       =  $9
+SCANL          =  $19
+SCANH          =  $1A
+BASL           =  $28
+BASH           =  $29
+ZPG1           =  $2A
+ZPG2           =  $2B
+INVFLG         =  $32
+
+VMODE          =  $4FB
+VFACTV         =  $67B
+
+KBD            =  $C000
+KBDSTRB        =  $C010
+
+TEXTOFF        =  $C050
+MIXEDOFF       =  $C052
+PAGE2OFF       =  $C054
+HIRESON        =  $C057
+
+BASCALC        =  $FBC1      ; BASCALC without adding left margin.
+VTABZ          =  $FC24
+WAIT           =  $FCA8
+SETINV         =  $FE80
+SETNORM        =  $FE84
+
+
+
+
+
+               JMP  ABOUT
+
+
+
+               .BYTE " HRF.40 by MARQUE'",$38,$38," systems "
+
+
+
+STOREA         .RES 1          ;Storage for accum. contents
+STOREA1        .RES 1          ;Storage for text moded result of above
+PS             .RES 1          ;Printer/screen indicator.
+ESCFLG         .RES 1          ;Escape code mode indicator (bit7 =1 = mode on)
+BIND           .RES 1
+MEMWID         .RES 1
+CASEMASK       .BYTE 0
+
+
+
+ABOUT          LDA  #$28       ; # of columns
+               STA  $21
+               LDA  #0         ; Left margin.
+               STA  $20
+               STA  $22        ; Top of screen.
+               LDA  #$18       ; Bottom of screen.
+               STA  $23
+
+               LDA  TEXTOFF
+               LDA  MIXEDOFF
+               LDA  HIRESON
+               LDA  PAGE2OFF
+
+
+
+               LDA  VMODE
+               AND  #$DF
+               ORA  #8
+               STA  VMODE
+               JSR  EVFON
+               JSR  ESCAT      ;CLEAR ZE SCREEN!
+                               ;Check & move start of BASIC prog. addr.
+               LDA  $68
+               CMP  #$40
+               BCS  HOOKUP     ;If already @ $4000, connect to O.S.
+               LDA  #$40
+               STA  $68
+               STA  $6A
+               STA  $6C
+               STA  $6E
+               STA  $B0
+               LDX  #4
+               STX  $69
+               STX  $6B
+               STX  $6D
+               STX  $AF
+               LDA  #1
+               STA  $67
+               LSR
+STORZ          STA  $4000,X
+               DEX
+               BPL  STORZ
+HOOKUP         LDA  #$80
+               STA  PS
+               JSR  OUTDEV
+               JMP  SWREST
+
+
+
+
+
+                               ;Save registers
+IOSAVE         STY  $35
+               STX  $EB
+               STA  STOREA
+               STA  STOREA1
+               RTS
+
+
+
+
+
+
+
+
+
+                               ;Output entry point
+KOUT2          JSR  IOSAVE
+               JSR  ENVIRON
+               CLC
+               ROR  BIND
+               LDA  STOREA
+               BIT  VFACTV
+               BPL  ACTIV
+               CMP  #$A0
+               BCC  ISCTRL
+               AND  INVFLG
+ISCTRL         STA  STOREA1
+               JSR  PROCESS
+               JMP  IOREST
+ACTIV          JSR  VFPROC
+
+IOREST         LDA  STOREA
+XYREST         LDY  $35
+               LDX  $EB
+
+SWREST         RTS
+
+
+
+                               ;PROCESS CONTROL CODES.
+PROCESS        BIT  ESCFLG     ;Escape mode on?
+               BPL  CTLOOK     ;=> no
+               JMP  ESCPROC
+CTLOOK         TAX
+               BPL  LEGAL2
+               CMP  #$A0
+               BCS  LEGAL2
+               LDX  #FONTFUNC-FREFUNC         ;Global special ctrls
+DYCTRL         PHA
+               LDA  VMODE
+               AND  #$28
+               EOR  #8
+               BNE  CTRL5      ;=>Controls disabled
+               PLA
+CTLMTCH        CMP  EVFTBL,X
+               BEQ  EGZEK
+               DEX
+               BPL  CTLMTCH
+               BMI  CTRL51
+EGZEK          TXA
+               CMP  #5
+               BCC  STAKIT
+               ADC  #1
+               CLC
+STAKIT         ADC  #2
+               ASL
+               JMP  SUBROUTE
+CTRL5          PLA
+CTRL51         CMP  #$8D
+               BEQ  CROUT2
+                               ;Process remaining 4 control codes.
+               CMP  #$9B       ;Is Escape?
+               BNE  LEFT3      ;=> no
+IKSKAPE        SEC             ; \_
+               ROR  ESCFLG     ; /  Turn on Escape mode flag
+XIT            RTS
+LEFT3          CMP  #$88       ;Is backspace?
+               BNE  LEFT2      ;=> no
+LEFT           DEC  $24
+               BPL  XIT
+               LDX  $21
+               DEX
+               STX  $24
+UP             LDX  $25
+               CPX  $22        ;Already @ top of window?
+               BEQ  XIT        ;=> yes
+               DEC  $25
+CALCBAS        LDA  $25
+NEWBAS         JMP  VTABZ
+LEFT2          CMP  #$87       ;Is it a bell?
+               BNE  LEFT1      ;=> no
+               JMP  (BELVEC)   ;Ring bell.
+LEFT1          CMP  #$8A       ;Is it a line feed?
+               BEQ  LINEFEED   ;=> yes
+LEGAL          LDA  STOREA1
+LEGAL1         STA  STOREA1
+LEGAL2         JSR  BLSTCHR1   ;Treat as printable character.
+               BIT  BIND       ;Wast yon karacktre non printy?
+               BMI  XIT        ;=> da
+RIGHT          INC  $24        ;Advance 1 screen pos.
+               LDA  $24        ; \_
+               CMP  $21        ; /  Czech for endo screen.
+               BCS  NOPAUSE    ;=> was endo screen
+               RTS
+                               ;  ---Carriage returne processing---
+CROUT2         LDY  KBD
+               CPY  #$93       ;Is it CTRL-S?
+               BNE  NOPAUSE    ;=> no
+               BIT  KBDSTRB    ;Yes, turn off "key pressed" flag.
+PAUSELP        LDY  KBD        ; \_ and pause until any
+               BPL  PAUSELP    ; /  key is pressed.
+               CPY  #$83       ;Was it CTRL-C?
+               BEQ  NOPAUSE    ;=> yes (don't turn off keypress flag)
+               BIT  KBDSTRB    ;STROBE THAT KEYBOARD FLAG!!
+NOPAUSE        LDA  #0
+               STA  $24
+LINEFEED       INC  $25
+               LDA  $25        ; \_ @ bottom
+               CMP  $23        ; /  of window?
+               BCC  NEWBAS     ;=> no
+               JSR  SCROLL
+               LDX  $23
+               DEX
+               STX  $25
+               TXA
+               BPL  NEWBAS
+                               ;EVF processing
+VFPROC         BIT  ESCFLG
+               BMI  ESCPROC
+               TAX
+               BPL  LEGAL2
+               CMP  #$A0
+               BCC  VFCTRL
+               BIT  INVFLG
+               BMI  LEGAL2
+               AND  #$7F
+               PHA
+               LDA  VMODE
+               LSR             ;Mausmoade?
+               PLA
+               BCC  LEGAL1     ;? le mice
+               CMP  #$60
+               BCS  LEGAL1
+               CMP  #$40
+               BCC  LEGAL1
+               SBC  #$40
+               BCS  LEGAL1
+VFCTRL         LDX  #$F
+               JMP  DYCTRL
+                               ;For Escape codes
+ESCPROC        CLC             ; \_
+               ROR  ESCFLG     ; /  Turn flag off
+               TAX
+               BMI  LAMRON
+               EOR  #$20
+               AND  #$BF
+               CLC
+               ADC  #$A0
+LAMRON         CMP  #$A0
+               BEQ  SCOROFF
+               CMP  #$DF
+               BEQ  SCORON
+               CMP  #$B0
+               BCC  HLP
+               CMP  #$BA
+               BCS  HLP
+               AND  #$F
+               ASL
+               STA  CHARARG
+               RTS
+HLP            JMP  LEGAL
+SCOROFF        LDA  #0
+               STA  UNDRSCR
+               RTS
+SCORON         LDA  #$7F
+               STA  UNDRSCR
+               RTS
+CAPSLCKTOG     LDA CASEMASK
+               EOR #$20
+               STA CASEMASK
+               RTS
+                               ;Extra CTRL code rtns
+DNSCRL         LDA  $25
+               PHA
+               JSR  DROP
+               BMI  RESTCV     ;Always taken
+UPSCRL         LDA  $25
+               PHA
+               JSR  SCROLL
+RESTCV         PLA
+               STA  $25
+               JMP  VTABZ
+                               ;
+HOUSE          LDA  #0
+               STA  $24
+               LDA  $22
+               STA  $25
+               JMP  VTABZ
+                               ;
+ENTLN          LDA  BASH
+               STA  HTXSTA
+               CLC
+               ADC  PAGE
+               STA  HINSTRS
+               LDX  BASL
+               JMP  BLKLN
+                               ;
+EVFON          CLC
+               .BYTE $24
+EVFOFF         SEC
+               ROR  VFACTV
+               RTS
+                               ;
+MAUSON         LDA  VMODE
+               AND  #$FE
+EMMAUS         STA  VMODE
+               RTS
+MAUSOFF        LDA  VMODE
+               ORA  #1
+               BNE  EMMAUS
+                               ;
+INVON          JSR  SETINV
+               LDA  VMODE
+               ORA  #4
+               BNE  EMMAUS
+INVOFF         JSR  SETNORM
+               LDA  VMODE
+               AND  #$FB
+               JMP  EMMAUS
+                               ;SCROLL ROUTINE
+                               ;(downscrollheer)
+DROP           SEC
+               ROR  BIND
+               LDY  $23
+               DEY
+               STY  $25        ;For downscroll, $25=bottom line (dest)
+               TYA
+               JSR  VTABZ
+               STA  ZPG1
+               LDA  BASH
+               STA  ZPG2
+               DEY
+               JMP  SAMCOD
+                               ;(upscrollheer)
+SCROLL         CLC
+               ROR  BIND
+               LDA  $22        ;Address top line of window.
+               JSR  VTABZ      ; __  Calculate base addr.
+               STA  ZPG1       ;   |_ Transfer line base
+               LDA  BASH       ;   |  contents to 2A.2B
+               STA  ZPG2       ; __|
+               LDY  $22        ; \_
+               INY             ; /  Address line below top in window.
+               STY  $25        ;Present line = that.
+SAMCOD         TYA             ; \_
+               JSR  VTABZ      ; /  Calculate base address.
+               STA  LTEXT      ;Store in self mod. code l.b. LDA instr.
+               LDA  ZPG1       ;Get l.b. of top line.
+               STA  LTEXT1     ; \
+               LDX  ZPG2
+               STX  HTEXT1     ; /
+               LDA  BASH       ;Get h.b. next line addr.
+               STA  HTEXT      ; - Store in self mod. code h.b. LDA instr.
+               ADC  PAGE       ;Add offset for graphics screen page.
+               ADC  #$1C
+               STA  BASH       ;Store it.
+               TXA             ; Recover other h.b. (for STA instrs.)
+               ADC  PAGE       ;Add offset for gr. screen page.
+               ADC  #$1C
+               SEC
+               LDY  #$2A       ;Count for loop.
+INITSTRS       STA  HINSTRS1,Y ;-Store @ h.b. graphics STA
+               SBC  #4
+               TAX
+               LDA  ZPG1       ;Get l.b. top line addr.
+               STA  LINSTRS1,Y ;-Store @ l.b. graphics STA
+               LDA  BASH       ;Get h.b. next line addr.
+               STA  HINSTRS,Y  ;-Store @ h.b. graphics LDA
+               SBC  #4
+               STA  BASH
+               LDA  BASL       ;Get l.b. next line addr.
+               STA  LINSTRS,Y  ;-Store @ l.b. graphics LDA
+               TYA             ; \
+               SBC  #6         ;  |- Decrement index by six.
+               TAY             ; /
+               TXA             ;Get h.b. top line addr.
+               BCS  INITSTRS   ;=> continue loop
+GETY           LDY  $21
+               DEY
+COPY           .BYTE $B9         ;--LDA abs-addr,Y
+LINSTRS        .BYTE $FF         ; self modified l.b. operand.
+HINSTRS        .BYTE $FF         ; self modified h.b. operand.
+               .BYTE $99         ;--STA abs-addr,Y
+LINSTRS1       .BYTE $FF         ; self mod. l.b. operand.
+HINSTRS1       .BYTE $FF         ; self mod. h.b. operand.
+                               ; _____
+               LDA  $FFFF,Y    ;      |
+               STA  $FFFF,Y    ;      |
+               LDA  $FFFF,Y    ;      |
+               STA  $FFFF,Y    ;      |
+               LDA  $FFFF,Y    ;      |
+               STA  $FFFF,Y    ;      |
+               LDA  $FFFF,Y    ;      |_ Self modified bank of LDA-STA
+               STA  $FFFF,Y    ;      |  pairs for scrolling graphics.
+               LDA  $FFFF,Y    ;      |
+               STA  $FFFF,Y    ;      |
+               LDA  $FFFF,Y    ;      |
+               STA  $FFFF,Y    ;      |
+               .BYTE $B9,$FF       ;      |
+HINSTRS2       .BYTE $FF         ;      |
+               STA  $FFFF,Y    ; _____|
+                               ;
+               .BYTE $B9         ;--LDA abs-addr,Y for text
+LTEXT          .BYTE $FF         ; self mod. l.b. operand.
+HTEXT          .BYTE $FF         ; self mod. h.b. operand.
+               .BYTE $99         ;--STA abs-addr,Y fo' tex'
+LTEXT1         .BYTE $FF         ; We know, we know.
+HTEXT1         .BYTE $FF
+               DEY
+               BPL  COPY
+               LDY  $25        ;Git line #
+               BIT  BIND
+               BPL  UPCHEK     ;=>scroll up
+               DEY
+               CPY  $22        ;Bottom line @ top?
+               BNE  BLECH      ;=>no
+               JMP  BLAK
+UPCHEK         INY
+               CPY  $23        ;Bottom line > bottom?
+               BCC  BLECH      ;=> no
+               JMP  BLAK
+BLECH          STY  $25        ;Store line #
+               LDA  HINSTRS2   ;Get high byte
+               CPY  #8
+               BEQ  WCHTHRD
+               CPY  #$10
+               BNE  REG
+                               ;LINES CROSSING SCREEN THIRDS INITIALIZATION
+WCHTHRD        BIT  BIND
+               BPL  THOIDS
+               CLC
+               ADC  #3
+               TAX             ;For down
+               LDA  LINSTRS
+               ADC  #$58
+               BMI  IOPNST
+                               ;
+THOIDS         SEC
+               SBC  #3
+               TAX             ;For up
+               LDA  LINSTRS
+               SBC  #$58
+               BPL  IOPNST
+                               ;LINES MOVING WITHIN THIRDS INITIALIZATION
+REG            TAX
+               LDA  LINSTRS
+               BIT  BIND
+               BPL  UPREG
+               EOR  #$80
+               BPL  IOPNST     ;For down
+               DEX
+               BNE  IOPNST
+                               ;
+UPREG          EOR  #$80
+               BMI  IOPNST     ;For up
+               INX
+IOPNST         STA  ZPG2       ;  \/ REINITIALIZING LOOP /\
+               LDY  #$2A
+               SEC
+OPINST         LDA  HINSTRS,Y
+               STA  HINSTRS1,Y
+               LDA  LINSTRS,Y
+               STA  LINSTRS1,Y
+               TXA
+               STA  HINSTRS,Y
+               SBC  #4
+               TAX
+               LDA  ZPG2
+               STA  LINSTRS,Y
+               TYA
+               SBC  #6
+               TAY
+               BCS  OPINST     ;---End of said loop---
+               TXA
+               ADC  #4
+               SEC
+               SBC  PAGE
+               LDX  HTEXT
+               STX  HTEXT1
+               LDX  LTEXT
+               STX  LTEXT1
+               STA  HTEXT
+               LDA  ZPG2       ;A low byte
+               STA  LTEXT
+               JMP  GETY       ; and copy another line.
+                               ;__ BLACK OUT A LINE (or section of) ONSCREEN.
+BLAK           LDX  LINSTRS    ;  |
+               LDA  HTEXT      ;  |_ Transfer the
+               STA  HTXSTA     ;  |  text addresses
+BLKLN          STX  LTXSTA     ;__|
+               LDA  HINSTRS
+               CLC
+               ADC  #$1C
+               SEC
+               LDY  #$15
+BLKINIT        STA  HGRSTA,Y
+               SBC  #4
+               STA  ZPG1
+               TXA
+               STA  LGRSTA,Y
+               LDA  ZPG1       ; __
+               DEY             ;   |
+               DEY             ;   |- Continue loop?
+               DEY             ; __|
+               BPL  BLKINIT    ;=> yes
+               LDA  #0
+               LDY  #$A0
+               BIT  VFACTV
+               BMI  CLEARSET
+               BIT  INVFLG
+               BMI  CLEARSET
+               LDA  #$7F
+               LDY  #$20
+CLEARSET       STA  SCANL
+               STY  SCANH
+               LDY  $21
+               DEY
+BLK            LDA  SCANL
+               .BYTE $99         ;--STA abs-addr,Y
+LGRSTA         .BYTE $FF         ;  l.b. operand
+HGRSTA         .BYTE $FF         ;  h.b. operand
+                               ; ___
+               STA  $FFFF,Y    ;    |
+               STA  $FFFF,Y    ;    |
+               STA  $FFFF,Y    ;    |  De bank de
+               STA  $FFFF,Y    ;    |- modified code
+               STA  $FFFF,Y    ;    |  STA instructions.
+               STA  $FFFF,Y    ;    |
+               STA  $FFFF,Y    ; ___|
+                               ;
+               LDA  SCANH      ;Inverse or normal space
+               .BYTE $99         ;--STA abs-addr,Y
+LTXSTA         .BYTE $FF         ;  l.b. operand
+HTXSTA         .BYTE $FF         ;  l.b. operand
+               DEY
+               BPL  BLK
+               RTS
+                               ;RESORT INVERSE VALUES
+RESORT         CMP  #$20
+               BCS  FLASHE
+               ADC  #$40       ;Inv caps
+               BCC  INVSET
+FLASHE         CMP  #$40
+               BCC  INVSET     ;=> Inv symbs
+               CMP  #$60
+               BCS  INVSET     ;=> Inv lc
+               SEC
+               SBC  #$40       ;Inv CTRL chrs
+INVSET         ORA  #$80
+               LDY  #$7F
+               STY  INVERTO
+               LDY  CHRTBLBL
+               STY  SCANL
+               LDY  CHRTBLBH
+               STY  SCANH
+               LDY  #1
+               BNE  MAXN
+                               ;PRINT A CHARACTER, EXTERNAL ENTRY PT.
+BLSTCHR        JSR  IOSAVE
+               SEC
+               ROR  BIND
+               JSR  ENVIRON
+                               ;INTERNAL ENTRY PT.
+BLSTCHR1       LDA  INVERTO    ;\_
+               PHA             ;/  Save text mode
+               LDX  #0
+               LDY  CHARARG
+               LDA  VECTBL,Y
+               STA  CHRTBLBL
+               STA  SCANL
+               LDA  VECTBL+1,Y
+               STA  CHRTBLBH
+               STA  SCANH
+               TYA
+               LSR
+               CMP  #8         ;Use 2nd bit map?
+               BCC  FORST
+               INX
+FORST          TAY
+               LDA  BITMSK,Y   ;(10 bytes)
+               LDY  #1
+               AND  WHEREMEM,X ;Aux or main mem?
+               CLC
+               BEQ  RWHORE     ;=>main
+               SEC
+RWHORE         ROR  MEMWID     ;7 bit: 1 = set in aux mem
+               LDA  STOREA1    ;Get char val
+MAXN           PHA
+               AND  #$E0
+               ASL
+               ROL
+               ROL
+               ROL
+               TAX             ;Use as index
+               LDA  BITMSK,X
+               BIT  MEMWID
+               JMP  FREMEM     ;(was SETREAD)
+
+
+                               ;___
+CONFIRM        ADC  #$13       ;   |
+               BCC  HINOT      ;   |
+               CLC             ;   |
+               INC  CHRTBLBH   ;   |_ Use leap index to establish
+HINOT          ADC  CHRTBLBL   ;   |  base address of definitions sec
+               STA  CHRTBLBL   ;   |
+               BCC  HIAINT     ;   |
+               INC  CHRTBLBH   ;___|
+                               ;
+                               ;ADDRESS A DEFINITION
+HIAINT         LDY  #0         ;\_
+               STY  ZPG2       ;/  Initialize hi byte of char offset to 0.
+               LDA  ZPG1       ;       ___
+               ASL             ; \_ x2    |
+               ROL  ZPG2       ; /        |
+               ASL             ; \_ x4    |_
+               ROL  ZPG2       ; /        |  Multiply char index by 8
+               ASL             ; \_ x8    |
+               ROL  ZPG2       ; /     ___|
+               ADC  CHRTBLBL
+               STA  CHRTBLBL
+               LDA  ZPG2
+               ADC  CHRTBLBH
+               STA  CHRTBLBH   ;---Addressing finished
+               LDA  INVERTO
+               STA  ZPG1
+               LDA  UNDRSCR
+               STA  ZPG2
+               LDA  STOREA1
+               LDY  #7
+               CLC
+               BIT  MEMWID
+               JSR  BLAST      ;-> Blast char onto cell
+               LDA  BASH       ;\
+               ADC  PAGE       ; |- Restore graphics scrn base addr
+               STA  GRPHH      ;/
+               LDA  STOREA1
+               STA  (BASL),Y   ;Store char on text scrn
+               PLA
+               STA  INVERTO
+               BIT  BIND       ;Exit to external?
+               BMI  EXT        ;=> yes
+               RTS
+EXT            JMP  IOREST
+                               ;     NON PRINTED CHARACTER EXIT
+NOTCHR         PLA
+               STA  INVERTO
+               BIT  BIND       ;Is BLSTCHR caller external?
+               BPL  INTRNL     ;=> no, caller is internal
+               JMP  IOREST     ;Do external exit.
+INTRNL         SEC             ; \   Tell internal interface
+               ROR  BIND       ;  |- that the character was not
+               RTS             ; /   printed & exit.
+                               ;SET UP ENVIRONMENT
+ENVIRON        LDA  BASH
+               CLC
+               ADC  PAGE
+               STA  GRPHH
+               LDA  BASL
+               STA  GRPHL
+               RTS
+
+
+
+
+
+
+
+
+
+
+                               ;INPUT ENTRY PT.
+CEYIN1         STA  (BASL),Y   ;Shut off possible cursor on text scr.
+               JSR  IOSAVE
+BUGIN          JSR  ENVIRON
+               LDY  $24        ; \_
+               LDA  (BASL),Y   ; /  Get screen char
+               STA  STOREA     ; & save it
+               JSR  KEYPRESS   ;Get key value from keybored
+               CMP  #$C1       ; A
+               BCC  SAMECASE   ; No, below alphabetic
+               CMP  #$DB       ; '[' (character beyond Z)
+               BCS  SAMECASE   ; No, beyond alphabetic
+               ORA  CASEMASK   ; Apply caps lock case mask
+SAMECASE       STA  STOREA1    ;Save it
+               TSX
+               LDA  $106,X     ; \_
+               CMP  GTLNCHK+1  ; /  h. b. GETLN?
+               BNE  XKEYIN2
+               LDA  $105,X     ; \_
+               CMP  GTLNCHK    ; /  l. b. GETLN?
+               BNE  XKEYIN2
+               LDA  STOREA1    ;Recover the typed keypress
+               CMP  #$95       ;CTRL-U?
+               BNE  ESK        ;=> no
+               JMP  IOREST     ;Exit loading accum from STOREA
+ESK            CMP  #$9B       ;ESCAPE?
+               BNE  UPWARD     ;=> no
+               JSR  ESCHNDL
+               JMP  BUGIN
+UPWARD         CMP  #$8D       ;Carriage return?
+               BNE  XKEYIN1    ;=> no
+               JSR  ESCE       ;Yes, clear to end of line
+               TSX             ;-\
+               LDA  GTLNCHK+3  ; | Modify the return address on the stack to
+               STA  $106,X     ; |-return back into ROM GETLN past the CLREOL
+               LDA  GTLNCHK+2  ; | call (efficiency)
+               STA  $105,X     ;-/
+               LDA  #$8D
+               LDX  $EB        ;\_
+               STA  $200,X     ;/  Place in buffer
+XKEYIN0        JMP  XYREST     ;_
+XKEYIN1        LDA  GTLNCHK+5  ; | Modify the return address on the stack to
+               STA  $106,X     ; |_return back into ROM GETLN past the
+               LDA  GTLNCHK+4  ; | uppercasing code (& still able to use X from
+               STA  $105,X     ;_| TSX before GETLN check above)
+XKEYIN2        LDA  STOREA1    ;Recover the typed keypress
+               BMI  XKEYIN0
+                               ;Use keyboard input vector
+KEYPRESS       JMP  (KEYPRVEC) ;Dittoe
+                               ;Main keyboard input routine
+STDKEPRS       JSR  CELLREV    ;Reverse char bit pattern.
+               JSR  CYCLE      ;Check kbrd w/delay & alter RND seed
+               BMI  KEYPR      ;=> key pressed
+               JSR  CELLREV    ;Reverse to normal
+               JSR  CYCLE
+               BPL  KEYPRESS   ;=> no key pressed
+               BMI  KEYPR1     ;Get around reversal
+KEYPR          JSR  CELLREV    ; (Normal)
+KEYPR1         LDA  KBD        ;Get key value
+               BIT  KBDSTRB    ;Turn off AKD flag
+               RTS
+                               ;Delay/keyboard check subrtn.
+CYCLE          LDX  DLYLPCNT   ;Get outer loop delay val (default = 0)
+INKRND         INC  $4E
+               BNE  CHKKBD
+               INC  $4F
+CHKKBD         BIT  KBD        ;Key pressed?
+               BMI  OUTCYCL    ;=> yes
+               LDA  DLYVAL     ;Get inner delay (default = $0F)
+               JSR  WAIT       ;Call ROM delay subrtn
+               DEX             ;End of outer loop?
+               BNE  INKRND     ;=> no
+OUTCYCL        RTS
+                               ;Bit pattern reversal subrtn
+CELLREV        LDX  #7
+               LDY  $24
+               CLC
+BYTREV         LDA  (GRPHL),Y
+               EOR  #$7F
+               STA  (GRPHL),Y
+               JSR  ADD1K
+               DEX
+               BPL  BYTREV
+               JMP  SUB8K
+                               ;Escape code processing subrtn
+NESTED         TXA
+               AND  #3         ;Shut off the 2 bit: fold the arrow keys to the
+                               ;equivalent J,M,K,I cursor movement functions
+               TAX
+               JSR  FREE       ;Uses only the first four movement functions,
+                               ;fall through to end up staying in Escape mode
+               JSR  ENVIRON
+ESCHNDL        JSR  ESCCUR
+EXTESCH        LDX  #FREFUNC-NESTFUNC-1
+ISNSTD         CMP  NESTFUNC,X ;Is it a nested function?
+               BEQ  NESTED     ;=> yes
+               DEX             ;End noose?
+               BPL  ISNSTD     ;=> noape
+               LDX  #FUNCVEC-FREFUNC-1
+ISFREE         CMP  FREFUNC,X  ;Izzit yon 1 shot function?
+               BEQ  FREE       ; brantch = yoape
+               DEX             ;Cut noose loose?
+               BPL  ISFREE     ; burntch = mump
+               RTS
+FREE           TXA
+               ASL
+               CMP  #(FONTFUNC-FREFUNC)*2       ;Is it a character set #?
+               BCS  SETCHGE    ;=> yes
+SUBROUTE       TAX
+               LDA  FUNCVEC+1,X
+               PHA
+               LDA  FUNCVEC,X
+               PHA
+               RTS
+                               ;Fulfill keybouard request for charset
+SETCHGE        SBC  #(FONTFUNC-FREFUNC)*2       ;Convert to direct chrset #
+               STA  CHARARG    ;Change it
+               RTS
+                               ;Use vector for alternate Escape cursor
+ESCCUR         JMP  (ESCCURV)  ;Ditto
+                               ;Standard escape cursor rtn.
+STDESCUR       JSR  EXCHCUR
+ESCKEY         BIT  KBD        ;Key pressed?
+               BPL  ESCKEY     ;=> no
+               JSR  EXCHCUR    ;Yes, turn off Esc cursor
+               LDA  KBD        ;Get key val
+               BIT  KBDSTRB    ;Shut off AKD flag
+               RTS
+                               ;Screen bytes exchange (for escape cursor)
+EXCHCUR        CLC
+               LDY  #7
+ESCHNGE        LDA  ESCCURSR,Y
+               TAX
+               STY  ZPG1
+               LDY  $24
+               LDA  (GRPHL),Y
+               LDY  ZPG1
+               STA  ESCCURSR,Y
+               TXA
+               LDY  $24
+               STA  (GRPHL),Y
+               JSR  ADD1K
+               LDY  ZPG1
+               DEY
+               BPL  ESCHNGE
+SUB8K          SEC
+               SBC  #$20
+               STA  GRPHH
+               RTS
+                               ;Subroutine to add 1K to grphics scrn base addr
+ADD1K          LDA  GRPHH
+               ADC  #4
+               STA  GRPHH
+DOSXIT         RTS
+                               ;Switch to/from printer or screen program output
+OUTDEV         LDX  #<TBLIOVEC
+               LDY  #>TBLIOVEC
+               LDA  PS
+               BMI  TOSCRN     ;=> "Now printer, change to screen"
+               LDX  #<TBLIOVEC
+               LDY  #>TBLIOVEC
+TOSCRN         EOR  #$80
+               STA  PS
+               STX  GRPHL
+               STY  GRPHH
+               LDY  #$36
+               LDX  #0
+               LDA  $BF00
+               CMP  #$4C
+               BNE  THREEP3    ;=> Not ProDOS
+               LDY  #$30       ;Lo byte ProDOS BI global pg loc
+               LDX  #$BE       ;Hi byte ""
+THREEP3        STY  CHRTBLBL
+               STX  CHRTBLBH
+               LDY  #3
+INITIO         LDA  (GRPHL),Y
+               STA  (CHRTBLBL),Y
+               DEY
+               BPL  INITIO
+               TXA
+               BNE  DOSXIT
+               JMP  $3EA
+                               ;Escape @ clear entire text window
+ESCAT          LDA  $22
+               JSR  ESCFAT
+               LDA  #0
+               STA  $24
+               LDA  $22
+               STA  $25
+               JMP  VTABZ
+                               ;Escape F subroutine
+ESCF           JSR  ESCE
+               LDY  $25
+               INY
+               TYA
+                               ;Escape F, @ common subroutine
+ESCFAT         CMP  $23        ;Line # below bottom of window?
+               BCC  WIPEOUT
+               JMP  CALCBAS
+WIPEOUT        STA  ZPG2
+               JSR  VTABZ
+               TAX
+               LDA  BASH
+               STA  HTXSTA
+               ADC  PAGE
+               STA  HINSTRS
+               JSR  BLKLN      ;Clear the line (end of scroll rtn)
+               INC  ZPG2
+               LDA  ZPG2
+               BNE  ESCFAT
+                               ;Escape E subroutine
+ESCE           LDA  $21
+               SEC
+               SBC  $24
+               TAY             ;width
+               LDA  $21
+               STA  ZPG2
+               STY  $21
+               LDA  $25
+               JSR  VTABZ
+               ADC  $24        ;L.M.
+               TAX             ;Finished lo byte
+               LDA  BASH
+               STA  HTXSTA
+               ADC  PAGE
+               STA  HINSTRS
+               JSR  BLKLN
+               LDA  ZPG2
+               STA  $21
+               RTS
+                               ;External ESC@ interface handler
+EXTESCAT       JSR  IOSAVE
+               JSR  ESCAT
+               JMP  SWREST
+                               ;External char cell reverse interface handler
+EXTCELRV       JSR  IOSAVE
+               JSR  ENVIRON
+               JSR  CELLREV
+               JMP  SWREST
+                               ;External escape code interface handler
+EXTESC         JSR  IOSAVE
+               JSR  ENVIRON
+               LDA  STOREA
+               JSR  EXTESCH
+               JMP  IOREST
+                               ;Retrieve char. from screen (X=line, Y=col.)
+SCRNCHR        JSR  IOSAVE
+               LDA  BASL
+               LDY  BASH
+               STA  ZPG1
+               STY  ZPG2
+               LDA  $EB        ;Requested line
+               JSR  BASCALC
+               LDY  $35
+               LDA  (BASL),Y
+               LDX  ZPG1
+               LDY  ZPG2
+               STX  BASL
+               STY  BASH
+               JMP  XYREST
+
+
+                               ;D000 relocated code
+FREMEM         BPL  MAZN
+MAZN           AND  (SCANL),Y  ;Any defs in section?
+               BEQ  NODEFS
+               TXA
+               TAY
+               INY
+               INY
+               LDA  (SCANL),Y  ;Sec base offset
+               STA  ZPG1       ;Save it
+               CLC             ;___
+               ADC  #$12       ;   |
+               ADC  SCANL      ;   |
+               STA  SCANL      ;   |- Address base of sec in comp tbl
+               BCC  SAMEPG     ;   |
+               INC  SCANH      ;___|
+               CLC
+SAMEPG         TYA
+               ADC  #8
+               TAY
+               LDA  (CHRTBLBL),Y ;Get sec index
+               TAY
+               PLA
+               PHA
+LAUQE          CMP  (SCANL),Y
+               BEQ  DEFD
+               DEY
+               BPL  LAUQE
+NODEFS         PLA
+               BPL  ABNORMAL
+               JMP  NOTCHR     ;Char not in set
+ABNORMAL       JMP  RESORT     ;]- Let's try that search again
+                               ;SUCCESSFUL SEARCH
+DEFD           TYA
+               CLC
+               ADC  ZPG1       ;Char index
+               STA  ZPG1
+               PLA
+               LDY  #9
+               LDA  (CHRTBLBL),Y
+               LDY  #$11
+               ADC  (CHRTBLBL),Y ;Leap index
+               JMP  CONFIRM
+
+
+
+BLAST                          ;CHARACTER BLASTING NOOSE.
+               BPL  GETBYT
+GETBYT         LDA  (CHRTBLBL),Y ;Get character byte
+               STY  SCANL      ;Save index/noose count
+               LDY  $24        ;Address column
+               EOR  ZPG1       ;Reverse or not for inverse
+               STA  (GRPHL),Y  ;Store on screen.
+               LDY  SCANL      ;Recover index/noose count.
+               LDA  #4         ; ---
+               ADC  GRPHH      ;    |- Add 1K to screen base addr.
+               STA  GRPHH      ; ---
+               DEY             ;End of noose?
+               BNE  GETBYT     ;=> no
+               LDA  (CHRTBLBL),Y
+               ORA  ZPG2       ;Add in underscore, if on
+               EOR  ZPG1
+               LDY  $24
+               STA  (GRPHL),Y  ;Store bottom byte on screen
+               RTS
+
+
+
+
+
+;* THE CHARACTER SET! *
+
+LATNTXT        .BYTE $07         ;Def type (ignored, 40/80 cols)
+               .BYTE $E4         ;Section bitmap
+               .BYTE $00,$00,$00,$00   ;1st half \_
+               .BYTE $00,$20,$40,$60   ;2nd half /  Sec base offsets
+               .BYTE $FF,$FF,$1F,$FF   ;1st half \_
+               .BYTE $FF,$1F,$1F,$1F   ;2nd half /  Sec indeces
+                               ;     Comparison table
+               .BYTE $40,$41,$42,$43,$44,$45,$46,$47
+               .BYTE $48,$49,$4A,$4B,$4C,$4D,$4E,$4F
+               .BYTE $50,$51,$52,$53,$54,$55,$56,$57 ;Section 2
+               .BYTE $58,$59,$5A,$5B,$5C,$5D,$5E,$5F
+                               ;
+               .BYTE $A0,$A1,$A2,$A3,$A4,$A5,$A6,$A7
+               .BYTE $A8,$A9,$AA,$AB,$AC,$AD,$AE,$AF
+               .BYTE $B0,$B1,$B2,$B3,$B4,$B5,$B6,$B7 ;Section 5
+               .BYTE $B8,$B9,$BA,$BB,$BC,$BD,$BE,$BF
+                               ;
+               .BYTE $C0,$C1,$C2,$C3,$C4,$C5,$C6,$C7
+               .BYTE $C8,$C9,$CA,$CB,$CC,$CD,$CE,$CF
+               .BYTE $D0,$D1,$D2,$D3,$D4,$D5,$D6,$D7 ;Section 6
+               .BYTE $D8,$D9,$DA,$DB,$DC,$DD,$DE,$DF
+                               ;
+               .BYTE $E0,$E1,$E2,$E3,$E4,$E5,$E6,$E7
+               .BYTE $E8,$E9,$EA,$EB,$EC,$ED,$EE,$EF
+               .BYTE $F0,$F1,$F2,$F3,$F4,$F5,$F6,$F7 ;Section 7
+               .BYTE $F8,$F9,$FA,$FB,$FC,$FD,$FE,$FF
+                               ;       DEFINITIONS
+               .BYTE $36,$7E,$3F,$3F,$7F,$36,$08,$10 ;@
+               .BYTE $36,$4A,$21,$21,$41,$36,$08,$10 ;A
+               .BYTE $46,$36,$1E,$0E,$06,$02,$00,$00 ;B
+               .BYTE $7F,$2A,$14,$08,$08,$14,$22,$7F ;C
+               .BYTE $00,$04,$04,$0A,$11,$20,$40,$00 ;D
+               .BYTE $7F,$7B,$7B,$75,$6C,$5F,$3F,$7F ;E
+               .BYTE $02,$3F,$30,$79,$31,$7E,$60,$70 ;F
+               .BYTE $70,$08,$0C,$07,$00,$07,$18,$00 ;G
+               .BYTE $00,$08,$04,$02,$7F,$02,$04,$08 ;H
+               .BYTE $2A,$00,$00,$00,$00,$00,$00,$00 ;I
+               .BYTE $08,$1C,$2A,$49,$08,$08,$08,$08 ;J
+               .BYTE $08,$08,$08,$08,$49,$2A,$1C,$08 ;K
+               .BYTE $00,$00,$00,$00,$00,$00,$00,$7F ;L
+               .BYTE $04,$06,$7F,$46,$44,$40,$40,$40 ;M
+               .BYTE $3F,$3F,$3F,$3F,$3F,$3F,$3F,$3F ;N
+               .BYTE $6F,$10,$18,$1C,$7E,$1C,$18,$13 ;O
+               .BYTE $7B,$04,$0C,$1C,$3F,$1C,$0C,$64 ;P
+               .BYTE $40,$48,$1C,$3E,$7F,$08,$48,$40 ;Q
+               .BYTE $40,$48,$08,$7F,$3E,$1C,$48,$40 ;R
+               .BYTE $00,$00,$00,$00,$7F,$00,$00,$00 ;S
+               .BYTE $7F,$01,$01,$01,$01,$01,$01,$01 ;T
+               .BYTE $00,$08,$10,$20,$7F,$20,$10,$08 ;U
+               .BYTE $55,$2A,$55,$2A,$55,$2A,$55,$2A ;V
+               .BYTE $2A,$55,$2A,$55,$2A,$55,$2A,$55 ;W
+               .BYTE $00,$7F,$01,$01,$01,$41,$3E,$00 ;X
+               .BYTE $00,$7F,$40,$40,$40,$3F,$00,$00 ;Y
+               .BYTE $40,$40,$40,$40,$40,$40,$40,$40 ;Z
+               .BYTE $00,$08,$1C,$3E,$7F,$3E,$1C,$08 ;[
+               .BYTE $7F,$00,$00,$00,$00,$00,$00,$7F ;\
+               .BYTE $00,$14,$14,$77,$00,$77,$14,$14 ;]
+               .BYTE $7F,$40,$40,$4C,$4C,$40,$40,$7F ;^
+               .BYTE $01,$01,$01,$01,$01,$01,$01,$01 ;_
+               .BYTE $00,$00,$00,$00,$00,$00,$00,$00 ;space
+               .BYTE $00,$08,$00,$08,$08,$08,$08,$08 ;!
+               .BYTE $00,$00,$00,$00,$00,$14,$14,$14 ;"
+               .BYTE $00,$14,$14,$3E,$14,$3E,$14,$14 ;#
+               .BYTE $00,$08,$1E,$28,$1C,$0A,$3C,$08 ;$
+               .BYTE $00,$32,$32,$04,$08,$10,$26,$26 ;%
+               .BYTE $00,$2C,$12,$2A,$04,$0C,$14,$08 ;&
+               .BYTE $00,$00,$00,$00,$00,$08,$08,$08 ;'
+               .BYTE $00,$10,$08,$04,$04,$04,$08,$10 ;(
+               .BYTE $00,$04,$08,$10,$10,$10,$08,$04 ;)
+               .BYTE $00,$08,$2A,$1C,$08,$1C,$2A,$08 ;*
+               .BYTE $00,$00,$08,$08,$3E,$08,$08,$00 ;+
+               .BYTE $00,$04,$08,$08,$00,$00,$00,$00 ;,
+               .BYTE $00,$00,$00,$00,$3E,$00,$00,$00 ;-
+               .BYTE $00,$08,$00,$00,$00,$00,$00,$00 ;.
+               .BYTE $00,$00,$02,$04,$08,$10,$20,$00 ;/
+               .BYTE $00,$1C,$22,$26,$2A,$32,$22,$1C ;0
+               .BYTE $00,$1C,$08,$08,$08,$08,$0C,$08 ;1
+               .BYTE $00,$3E,$02,$04,$18,$20,$22,$1C ;2
+               .BYTE $00,$1C,$22,$20,$18,$10,$20,$3E ;3
+               .BYTE $00,$10,$10,$3E,$12,$14,$18,$10 ;4
+               .BYTE $00,$1C,$22,$20,$20,$1E,$02,$3E ;5
+               .BYTE $00,$1C,$22,$22,$1E,$02,$04,$38 ;6
+               .BYTE $00,$04,$04,$04,$08,$10,$20,$3E ;7
+               .BYTE $00,$1C,$22,$22,$1C,$22,$22,$1C ;8
+               .BYTE $00,$0E,$10,$20,$3C,$22,$22,$1C ;9
+               .BYTE $00,$00,$00,$08,$00,$08,$00,$00 ;:
+               .BYTE $00,$04,$08,$08,$00,$08,$00,$00 ;;
+               .BYTE $00,$90,$88,$84,$82,$84,$88,$90 ;<
+               .BYTE $00,$00,$00,$3E,$00,$3E,$00,$00 ;=
+               .BYTE $00,$82,$84,$88,$90,$88,$84,$82 ;>
+               .BYTE $00,$08,$00,$08,$08,$10,$22,$1C ;?
+               .BYTE $00,$3C,$02,$1A,$2A,$2A,$22,$1C ;@
+               .BYTE $00,$22,$22,$3E,$22,$22,$14,$08 ;A
+               .BYTE $00,$1E,$22,$22,$1E,$22,$22,$1E ;B
+               .BYTE $00,$1C,$22,$02,$02,$02,$22,$1C ;C
+               .BYTE $00,$1E,$22,$22,$22,$22,$22,$1E ;D
+               .BYTE $00,$3E,$02,$02,$0E,$02,$02,$3E ;E
+               .BYTE $00,$02,$02,$02,$0E,$02,$02,$3E ;F
+               .BYTE $00,$3C,$22,$32,$02,$02,$02,$3C ;G
+               .BYTE $00,$22,$22,$22,$3E,$22,$22,$22 ;H
+               .BYTE $00,$1C,$08,$08,$08,$08,$08,$1C ;I
+               .BYTE $00,$1C,$22,$20,$20,$20,$20,$20 ;J
+               .BYTE $00,$22,$12,$0A,$06,$0A,$12,$22 ;K
+               .BYTE $00,$3E,$02,$02,$02,$02,$02,$02 ;L
+               .BYTE $00,$22,$22,$22,$2A,$2A,$36,$22 ;M
+               .BYTE $00,$22,$22,$32,$2A,$26,$22,$22 ;N
+               .BYTE $00,$1C,$22,$22,$22,$22,$22,$1C ;O
+               .BYTE $00,$02,$02,$02,$1E,$22,$22,$1E ;P
+               .BYTE $00,$2C,$12,$2A,$22,$22,$22,$1C ;Q
+               .BYTE $00,$22,$12,$0A,$1E,$22,$22,$1E ;R
+               .BYTE $00,$1C,$22,$20,$1C,$02,$22,$1C ;S
+               .BYTE $00,$08,$08,$08,$08,$08,$08,$3E ;T
+               .BYTE $00,$1C,$22,$22,$22,$22,$22,$22 ;U
+               .BYTE $00,$08,$14,$22,$22,$22,$22,$22 ;V
+               .BYTE $00,$22,$36,$2A,$2A,$22,$22,$22 ;W
+               .BYTE $00,$22,$22,$14,$08,$14,$22,$22 ;X
+               .BYTE $00,$08,$08,$08,$08,$14,$22,$22 ;Y
+               .BYTE $00,$3E,$02,$04,$08,$10,$20,$3E ;Z
+               .BYTE $00,$3E,$06,$06,$06,$06,$06,$3E ;[
+               .BYTE $00,$00,$20,$10,$08,$04,$02,$00 ;\
+               .BYTE $00,$3E,$30,$30,$30,$30,$30,$3E ;]
+               .BYTE $00,$00,$00,$00,$00,$22,$14,$08 ;^
+               .BYTE $7F,$00,$00,$00,$00,$00,$00,$00 ;_
+               .BYTE $00,$00,$00,$00,$00,$08,$04,$02 ;`
+               .BYTE $00,$3C,$22,$3C,$20,$1C,$00,$00 ;a
+               .BYTE $00,$1E,$22,$22,$22,$1E,$02,$02 ;b
+               .BYTE $00,$3C,$02,$02,$02,$3C,$00,$00 ;c
+               .BYTE $00,$3C,$22,$22,$22,$3C,$20,$20 ;d
+               .BYTE $00,$3C,$02,$3E,$22,$1C,$00,$00 ;e
+               .BYTE $00,$04,$04,$04,$0E,$04,$24,$18 ;f
+               .BYTE $1C,$20,$3C,$22,$22,$1C,$00,$00 ;g
+               .BYTE $00,$22,$22,$22,$22,$1E,$02,$02 ;h
+               .BYTE $00,$1C,$08,$08,$08,$0C,$00,$08 ;i
+               .BYTE $0C,$12,$10,$10,$10,$18,$00,$10 ;j
+               .BYTE $00,$12,$0A,$06,$0A,$12,$02,$02 ;k
+               .BYTE $00,$1C,$08,$08,$08,$08,$08,$0C ;l
+               .BYTE $00,$22,$2A,$2A,$2A,$36,$00,$00 ;m
+               .BYTE $00,$22,$22,$22,$22,$1E,$00,$00 ;n
+               .BYTE $00,$1C,$22,$22,$22,$1C,$00,$00 ;o
+               .BYTE $02,$02,$1E,$22,$22,$1E,$00,$00 ;p
+               .BYTE $20,$20,$3C,$22,$22,$3C,$00,$00 ;q
+               .BYTE $00,$02,$02,$02,$06,$3A,$00,$00 ;r
+               .BYTE $00,$1E,$20,$1C,$02,$3C,$00,$00 ;s
+               .BYTE $00,$18,$24,$04,$04,$1E,$04,$04 ;t
+               .BYTE $00,$2C,$32,$22,$22,$22,$00,$00 ;u
+               .BYTE $00,$08,$14,$22,$22,$22,$00,$00 ;v
+               .BYTE $00,$36,$2A,$2A,$22,$22,$00,$00 ;w
+               .BYTE $00,$22,$14,$08,$14,$22,$00,$00 ;x
+               .BYTE $1C,$20,$3C,$22,$22,$22,$00,$00 ;y
+               .BYTE $00,$3E,$04,$08,$10,$3E,$00,$00 ;z
+               .BYTE $00,$30,$08,$08,$06,$08,$08,$30 ;{
+               .BYTE $08,$08,$08,$08,$08,$08,$08,$08 ;|
+               .BYTE $00,$06,$08,$08,$30,$08,$08,$06 ;}
+               .BYTE $00,$00,$00,$00,$00,$10,$2A,$04 ;~
+               .BYTE $00,$2A,$14,$2A,$14,$2A,$14,$2A ;
+
+
+
+
+
+
+
+                               ;+++DATA TABLES+++
+EVFTBL         .BYTE $9C,$9F,$9D,$8B,$8C,$96,$97,$99,$9A,$92 ;Always available
+               .BYTE $95,$9B,$98,$8E,$8F,$90 ;EVF only
+BITMSK         .BYTE $01,$02,$04,$08,$10,$20,$40,$80,$01,$02
+                               ;For Escape codes
+NESTFUNC       .BYTE $CA,$CD,$CB,$C9,$88,$8A,$95,$8B ;J,M,K,I,<-,down,->,^
+FREFUNC        .BYTE $C2,$C3,$C1,$C4,$C5,$C6,$C0   ;B,C,A,D,E,F,@
+               .BYTE $A0,$AD,$CC  ;space,-,L
+FONTFUNC       .BYTE $B0,$B1,$B2,$B3,$B4,$B5   ;0,1,2,3,4,5
+               .BYTE $B6,$B7,$B8,$B9         ;6,7,8,9
+FUNCVEC        .ADDR LEFT-1
+               .ADDR LINEFEED-1
+               .ADDR RIGHT-1
+               .ADDR UP-1
+               .ADDR ESCE-1
+               .ADDR ESCF-1
+               .ADDR ESCAT-1
+               .ADDR SCOROFF-1
+               .ADDR SCORON-1
+               .ADDR CAPSLCKTOG-1
+                               ;Extra CTRL codes
+               .ADDR DNSCRL-1
+               .ADDR UPSCRL-1
+               .ADDR HOUSE-1
+               .ADDR ENTLN-1
+               .ADDR EVFON-1
+                               ;EVF only
+               .ADDR EVFOFF-1
+               .ADDR MAUSON-1
+               .ADDR MAUSOFF-1
+               .ADDR INVOFF-1
+               .ADDR INVON-1
+               .ADDR IKSKAPE-1
+
+
+
+                               ;IMIDGE UV GLOWBALL VEKTIR TAYBULL
+VECTBL         .ADDR LATNTXT   ; 0
+               .ADDR LATNTXT   ; 1
+               .ADDR LATNTXT   ; 2
+               .ADDR LATNTXT   ; 3
+               .ADDR LATNTXT   ; 4
+               .ADDR LATNTXT   ; 5
+               .ADDR LATNTXT   ; 6
+               .ADDR LATNTXT   ; 7
+               .ADDR LATNTXT   ; 8
+               .ADDR LATNTXT   ; 9
+
+
+
+WHEREMEM       .BYTE $00,$00
+
+CHARARG        .BYTE $00
+               .ADDR FREMEM
+               .BYTE $00       ; ID
+
+                               ; Escape cursor
+ESCCURSR       .BYTE $7F,$7B,$F9,$77,$F3,$77,$E7,$6F
+
+ESCCURV        .ADDR STDESCUR  ; Vector to standard escape input rtn.
+
+               JMP  EXTESC     ; External user interface -> esc code processing
+
+
+
+INVERTO        .BYTE $00       ; Inv
+UNDRSCR        .BYTE $00       ; _
+PAGE           .BYTE $1C       ; Pg
+GTLNCHK        .ADDR $FD77     ; GETLN ret addr
+	       .ADDR $FD8D     ; GETLN CR reentry
+               .ADDR $FD83     ; GETLN lowercase (all other chars) reentry
+BELVEC         .ADDR $FBDD     ; Vector to BEL1
+
+KEYPRVEC       .ADDR STDKEPRS  ; Vector to standard keyboard input rtn.
+
+TBLIOVEC       .ADDR KOUT2     ; Image of system entry pt. for output
+               .ADDR CEYIN1    ; Image of system entry pt. for input
+
+
+                               ; Delay values for CYCLE subrtn. (STDKEPRS)
+DLYVAL         .BYTE $0F
+DLYLPCNT       .BYTE $00
+
+
+
+               JMP  CYCLE
+               JMP  SCRNCHR
+               JMP  EXTCELRV
+               JMP  ENVIRON
+               JMP  ABOUT
+               JMP  BLSTCHR
+               JMP  OUTDEV
+               JMP  EXTESCAT

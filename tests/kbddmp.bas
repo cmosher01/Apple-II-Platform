@@ -1,0 +1,20 @@
+NEW
+
+10   D =  PEEK(-16384)
+20   GOSUB 100
+30   PRINT H$
+40   GOTO 10
+
+100  REM INPUT D OUTPUT H$
+105  H$ = ""
+110  N =  INT (D / 16)
+120  GOSUB 200 : H$ = H$ + N$
+130  N = D - N*16
+140  GOSUB 200 : H$ = H$ + N$
+150  RETURN
+
+200  REM INPUT N OUTPUT N$
+210  IF N < 10 THEN N$ =  CHR$(ASC("0")+N) : RETURN
+220  N$ =  CHR$(ASC("A")+N-10) : RETURN
+
+RUN

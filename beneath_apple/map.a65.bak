@@ -1,0 +1,25 @@
+MLI             EQU     $BF00
+READ_BLOCK      EQU
+BUF             EQU     $4000
+
+                ORG     $0300
+ENTRY           PHA
+                TYA
+                PHA
+                TXA
+                PHA
+                JSR     MLI
+                DB      READ_BLOCK
+                DW      PARAMS
+                STA     RETCODE
+                PLA
+                TAX
+                PLA
+                TAY
+                PLA
+                RTS
+RETCODE         DB      0
+PARAMS          DB      3               ; 3 params
+                DB      $60             ; slot 6 drive 1
+                DW      BUF             ; buffer for block
+                DW      2               ; block 2
